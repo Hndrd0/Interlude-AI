@@ -1,23 +1,39 @@
 const GROQ_API_URL = 'https://api.groq.com/openai/v1/chat/completions';
 const MODEL = 'llama-3.1-8b-instant';
-const STORAGE_KEY = 'interlude_ai_groq_key';
+const HF_API_URL = 'https://api-inference.huggingface.co/models/black-forest-labs/FLUX.1-schnell';
 
-const apiKeyInput = document.getElementById('api-key-input');
-const saveKeyBtn = document.getElementById('save-key-btn');
-const apiKeyStatus = document.getElementById('api-key-status');
-const chatWindow = document.getElementById('chat-window');
-const chatForm = document.getElementById('chat-form');
-const messageInput = document.getElementById('message-input');
-const sendBtn = document.getElementById('send-btn');
-const sidebar = document.getElementById('sidebar');
-const sidebarOverlay = document.getElementById('sidebar-overlay');
-const sidebarToggle = document.getElementById('sidebar-toggle');
-const sidebarClose = document.getElementById('sidebar-close');
-const newChatBtn = document.getElementById('new-chat-btn');
+const STORAGE_KEY_GROQ = 'interlude_ai_groq_key';
+const STORAGE_KEY_HF   = 'interlude_ai_hf_key';
+const STORAGE_KEY_THEME = 'interlude_ai_theme';
+
+// ─── DOM references ────────────────────────────
+
+const apiKeyInput     = document.getElementById('api-key-input');
+const saveKeyBtn      = document.getElementById('save-key-btn');
+const apiKeyStatus    = document.getElementById('api-key-status');
+const hfApiKeyInput   = document.getElementById('hf-api-key-input');
+const saveHfKeyBtn    = document.getElementById('save-hf-key-btn');
+const hfApiKeyStatus  = document.getElementById('hf-api-key-status');
+const chatWindow      = document.getElementById('chat-window');
+const chatForm        = document.getElementById('chat-form');
+const messageInput    = document.getElementById('message-input');
+const sendBtn         = document.getElementById('send-btn');
+const sidebar         = document.getElementById('sidebar');
+const sidebarOverlay  = document.getElementById('sidebar-overlay');
+const sidebarToggle   = document.getElementById('sidebar-toggle');
+const sidebarClose    = document.getElementById('sidebar-close');
+const newChatBtn      = document.getElementById('new-chat-btn');
+const settingsBtn     = document.getElementById('settings-btn');
+const settingsOverlay = document.getElementById('settings-overlay');
+const settingsClose   = document.getElementById('settings-close');
+const themeToggleInput = document.getElementById('theme-toggle-input');
+const imageModeBtn    = document.getElementById('image-mode-btn');
+const inputHint       = document.getElementById('input-hint');
 
 let conversationHistory = [];
+let imageMode = false;
 
-// ─── Sidebar ───────────────────────────────────────────────
+// ─── Sidebar ───────────────────────────────────
 
 function openSidebar() {
   sidebar.classList.add('is-open');
@@ -33,7 +49,28 @@ sidebarToggle.addEventListener('click', openSidebar);
 sidebarClose.addEventListener('click', closeSidebar);
 sidebarOverlay.addEventListener('click', closeSidebar);
 
-// ─── New Chat ──────────────────────────────────────────────
+// ─── Settings modal ─────────────────────────────
+
+function openSettings() {
+  settingsOverlay.classList.add('is-open');
+  settingsOverlay.setAttribute('aria-hidden', 'false');
+}
+
+function closeSettings() {
+  settingsOverlay.classList.remove('is-open');
+  settingsOverlay.setAttribute('aria-hidden', 'true');
+}
+
+settingsBtn.addEventListener('click', openSettings);
+settingsClose.addEventListener('click', closeSettings);
+settingsOverlay.addEventListener('click', (e) => {
+  if (e.target === settingsOverlay) closeSettings();
+});
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape') closeSettings();
+});
+
+// ─── New Chat ──────────────────────────────────
 
 newChatBtn.addEventListener('click', () => {
   conversationHistory = [];
@@ -42,10 +79,26 @@ newChatBtn.addEventListener('click', () => {
   messageInput.focus();
 });
 
-// ─── API Key ───────────────────────────────────────────────
+// ─── Theme ─────────────────────────────────────
 
-function getApiKey() {
-  return localStorage.getItem(STORAGE_KEY) || '';
+function applyTheme(isLight) {
+  if (isLight) {
+    document.body.classList.add('light-mode');
+  } else {
+    document.body.classList.remove('light-mode');
+  }
+  themeToggleInput.checked = isLight;
+  localStorage.setItem(STORAGE_KEY_THEME, isLight ? 'light' : 'dark');
+}
+
+themeToggleInput.addEventListener('change', () => {
+  applyTheme(themeToggleInput.checked);
+});
+
+// ─── Groq API Key ──────────────────────────────
+
+function getGroqApiKey() {
+  return localStorage.getItem(STORAGE_KEY_GROQ) || '';
 }
 
 function setApiKeyStatus(message, type) {
@@ -59,23 +112,64 @@ saveKeyBtn.addEventListener('click', () => {
     setApiKeyStatus('Please enter a valid API key.', 'error');
     return;
   }
-  localStorage.setItem(STORAGE_KEY, key);
+  localStorage.setItem(STORAGE_KEY_GROQ, key);
   apiKeyInput.value = '';
-  setApiKeyStatus('API key saved successfully.', 'success');
+  setApiKeyStatus('Groq API key saved.', 'success');
 });
 
-// ─── Empty state ───────────────────────────────────────────
+// ─── HuggingFace API Key ───────────────────────
+
+function getHfApiKey() {
+  return localStorage.getItem(STORAGE_KEY_HF) || '';
+}
+
+function setHfApiKeyStatus(message, type) {
+  hfApiKeyStatus.textContent = message;
+  hfApiKeyStatus.className = `api-key-section__status api-key-section__status--${type}`;
+}
+
+saveHfKeyBtn.addEventListener('click', () => {
+  const key = hfApiKeyInput.value.trim();
+  if (!key) {
+    setHfApiKeyStatus('Please enter a valid API key.', 'error');
+    return;
+  }
+  localStorage.setItem(STORAGE_KEY_HF, key);
+  hfApiKeyInput.value = '';
+  setHfApiKeyStatus('Hugging Face API key saved.', 'success');
+});
+
+// ─── Image mode toggle ─────────────────────────
+
+function setImageMode(active) {
+  imageMode = active;
+  imageModeBtn.classList.toggle('is-active', active);
+  if (active) {
+    messageInput.placeholder = 'Describe an image to generate…';
+    inputHint.innerHTML = 'Image generation via Hugging Face · <kbd>Enter</kbd> to generate';
+  } else {
+    messageInput.placeholder = 'Message Interlude AI…';
+    inputHint.innerHTML = 'Press <kbd>Enter</kbd> to send · <kbd>Shift+Enter</kbd> for new line';
+  }
+  messageInput.focus();
+}
+
+imageModeBtn.addEventListener('click', () => {
+  setImageMode(!imageMode);
+});
+
+// ─── Empty state ───────────────────────────────
 
 function renderEmptyState() {
   chatWindow.innerHTML = `
     <div class="empty-state">
       <div class="empty-state__icon">✦</div>
       <p class="empty-state__title">How can I help you today?</p>
-      <p class="empty-state__desc">Ask me anything — I'm powered by Groq's fast inference.</p>
+      <p class="empty-state__desc">Ask me anything — I'm powered by Groq's fast inference. Toggle the image icon to generate images via Hugging Face.</p>
     </div>`;
 }
 
-// ─── Messages ──────────────────────────────────────────────
+// ─── Messages ──────────────────────────────────
 
 function createMessageElement(role, text) {
   const wrapper = document.createElement('div');
@@ -94,11 +188,43 @@ function createMessageElement(role, text) {
   return wrapper;
 }
 
+function createImageMessageElement(imageUrl, prompt) {
+  const wrapper = document.createElement('div');
+  wrapper.className = 'message message--ai';
+
+  const avatar = document.createElement('div');
+  avatar.className = 'message__avatar';
+  avatar.textContent = 'AI';
+
+  const bubble = document.createElement('div');
+  bubble.className = 'message__bubble';
+
+  const img = document.createElement('img');
+  img.src = imageUrl;
+  img.alt = prompt;
+  img.className = 'message__image';
+
+  bubble.appendChild(img);
+  wrapper.appendChild(avatar);
+  wrapper.appendChild(bubble);
+  return wrapper;
+}
+
 function appendMessage(role, text) {
   const emptyState = chatWindow.querySelector('.empty-state');
   if (emptyState) emptyState.remove();
 
   const el = createMessageElement(role, text);
+  chatWindow.appendChild(el);
+  chatWindow.scrollTop = chatWindow.scrollHeight;
+  return el;
+}
+
+function appendImageMessage(imageUrl, prompt) {
+  const emptyState = chatWindow.querySelector('.empty-state');
+  if (emptyState) emptyState.remove();
+
+  const el = createImageMessageElement(imageUrl, prompt);
   chatWindow.appendChild(el);
   chatWindow.scrollTop = chatWindow.scrollHeight;
   return el;
@@ -131,15 +257,16 @@ function hideTypingIndicator() {
 function setInputEnabled(enabled) {
   messageInput.disabled = !enabled;
   sendBtn.disabled = !enabled;
+  imageModeBtn.disabled = !enabled;
 }
 
-// ─── Send message ──────────────────────────────────────────
+// ─── Send chat message (Groq) ──────────────────
 
 async function sendMessage(userText) {
-  const apiKey = getApiKey();
+  const apiKey = getGroqApiKey();
   if (!apiKey) {
     setApiKeyStatus('Please save your Groq API key first.', 'error');
-    openSidebar();
+    openSettings();
     return;
   }
 
@@ -181,13 +308,67 @@ async function sendMessage(userText) {
   }
 }
 
+// ─── Generate image (Hugging Face) ────────────
+
+async function generateImage(prompt) {
+  const apiKey = getHfApiKey();
+  if (!apiKey) {
+    setHfApiKeyStatus('Please save your Hugging Face API key first.', 'error');
+    openSettings();
+    return;
+  }
+
+  appendMessage('user', prompt);
+  setInputEnabled(false);
+  showTypingIndicator();
+
+  try {
+    const response = await fetch(HF_API_URL, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${apiKey}`,
+      },
+      body: JSON.stringify({ inputs: prompt }),
+    });
+
+    if (!response.ok) {
+      const errText = await response.text().catch(() => '');
+      let errMsg = `Request failed (${response.status})`;
+      try {
+        const errJson = JSON.parse(errText);
+        errMsg = errJson.error || errMsg;
+      } catch (_) {}
+      throw new Error(errMsg);
+    }
+
+    const blob = await response.blob();
+    const imageUrl = URL.createObjectURL(blob);
+
+    hideTypingIndicator();
+    appendImageMessage(imageUrl, prompt);
+  } catch (err) {
+    hideTypingIndicator();
+    appendMessage('assistant', `Image generation error: ${err.message}`);
+  } finally {
+    setInputEnabled(true);
+    messageInput.focus();
+  }
+}
+
+// ─── Form submit ───────────────────────────────
+
 chatForm.addEventListener('submit', (e) => {
   e.preventDefault();
   const text = messageInput.value.trim();
   if (!text) return;
   messageInput.value = '';
   autoResizeTextarea();
-  sendMessage(text);
+  if (imageMode) {
+    generateImage(text);
+  } else {
+    sendMessage(text);
+  }
 });
 
 messageInput.addEventListener('keydown', (e) => {
@@ -204,9 +385,16 @@ function autoResizeTextarea() {
 
 messageInput.addEventListener('input', autoResizeTextarea);
 
-// ─── Init ──────────────────────────────────────────────────
+// ─── Init ──────────────────────────────────────
 
-if (getApiKey()) {
+const savedTheme = localStorage.getItem(STORAGE_KEY_THEME);
+applyTheme(savedTheme === 'light');
+
+if (getGroqApiKey()) {
   setApiKeyStatus('API key loaded.', 'success');
 }
+if (getHfApiKey()) {
+  setHfApiKeyStatus('API key loaded.', 'success');
+}
+
 renderEmptyState();
