@@ -1,0 +1,12 @@
+{
+  "name": "interlude-ai-backend",
+  "version": "1.0.0",
+  "description": "Appwrite serverless function – Groq AI + MongoDB Atlas",
+  "main": "functions/chat.js",
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "mongodb": "^6.5.0"
+  }
+}
