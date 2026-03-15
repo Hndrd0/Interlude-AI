@@ -1,5 +1,5 @@
 const GROQ_API_URL = 'https://api.groq.com/openai/v1/chat/completions';
-const MODEL = 'llama-3.3-70b-versatile';
+const MODEL = 'llama-3.1-8b-instant';
 const STORAGE_KEY = 'interlude_ai_groq_key';
 
 const apiKeyInput = document.getElementById('api-key-input');
@@ -9,8 +9,40 @@ const chatWindow = document.getElementById('chat-window');
 const chatForm = document.getElementById('chat-form');
 const messageInput = document.getElementById('message-input');
 const sendBtn = document.getElementById('send-btn');
+const sidebar = document.getElementById('sidebar');
+const sidebarOverlay = document.getElementById('sidebar-overlay');
+const sidebarToggle = document.getElementById('sidebar-toggle');
+const sidebarClose = document.getElementById('sidebar-close');
+const newChatBtn = document.getElementById('new-chat-btn');
 
 let conversationHistory = [];
+
+// ─── Sidebar ───────────────────────────────────────────────
+
+function openSidebar() {
+  sidebar.classList.add('is-open');
+  sidebarOverlay.classList.add('is-visible');
+}
+
+function closeSidebar() {
+  sidebar.classList.remove('is-open');
+  sidebarOverlay.classList.remove('is-visible');
+}
+
+sidebarToggle.addEventListener('click', openSidebar);
+sidebarClose.addEventListener('click', closeSidebar);
+sidebarOverlay.addEventListener('click', closeSidebar);
+
+// ─── New Chat ──────────────────────────────────────────────
+
+newChatBtn.addEventListener('click', () => {
+  conversationHistory = [];
+  renderEmptyState();
+  closeSidebar();
+  messageInput.focus();
+});
+
+// ─── API Key ───────────────────────────────────────────────
 
 function getApiKey() {
   return localStorage.getItem(STORAGE_KEY) || '';
@@ -29,24 +61,21 @@ saveKeyBtn.addEventListener('click', () => {
   }
   localStorage.setItem(STORAGE_KEY, key);
   apiKeyInput.value = '';
-  setApiKeyStatus('API key saved.', 'success');
-  renderEmptyStateOrHistory();
+  setApiKeyStatus('API key saved successfully.', 'success');
 });
+
+// ─── Empty state ───────────────────────────────────────────
 
 function renderEmptyState() {
   chatWindow.innerHTML = `
     <div class="empty-state">
-      <div class="empty-state__icon">💬</div>
-      <p class="empty-state__title">Start a conversation</p>
-      <p class="empty-state__desc">Ask me anything — I'm here to help.</p>
+      <div class="empty-state__icon">✦</div>
+      <p class="empty-state__title">How can I help you today?</p>
+      <p class="empty-state__desc">Ask me anything — I'm powered by Groq's fast inference.</p>
     </div>`;
 }
 
-function renderEmptyStateOrHistory() {
-  if (conversationHistory.length === 0) {
-    renderEmptyState();
-  }
-}
+// ─── Messages ──────────────────────────────────────────────
 
 function createMessageElement(role, text) {
   const wrapper = document.createElement('div');
@@ -104,10 +133,13 @@ function setInputEnabled(enabled) {
   sendBtn.disabled = !enabled;
 }
 
+// ─── Send message ──────────────────────────────────────────
+
 async function sendMessage(userText) {
   const apiKey = getApiKey();
   if (!apiKey) {
     setApiKeyStatus('Please save your Groq API key first.', 'error');
+    openSidebar();
     return;
   }
 
@@ -172,7 +204,8 @@ function autoResizeTextarea() {
 
 messageInput.addEventListener('input', autoResizeTextarea);
 
-// Init
+// ─── Init ──────────────────────────────────────────────────
+
 if (getApiKey()) {
   setApiKeyStatus('API key loaded.', 'success');
 }
