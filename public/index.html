@@ -31,10 +31,14 @@
         </svg>
         New Chat
       </button>
+      <div class="sidebar__section">
+        <p class="sidebar__section-title">Recent</p>
+        <div id="chat-list" class="chat-list"></div>
+      </div>
     </div>
 
     <div class="sidebar__footer">
-      <p class="sidebar__footer-text">Powered by Groq · llama-3.1-8b-instant</p>
+      <p class="sidebar__footer-text">Powered by Groq</p>
     </div>
   </aside>
 
@@ -78,42 +82,10 @@
           </div>
         </div>
 
-        <!-- Groq API Key -->
+        <!-- Info -->
         <div class="settings-section">
-          <p class="settings-section__title">Groq API</p>
-          <div class="api-key-section">
-            <label for="api-key-input" class="api-key-section__label">API Key</label>
-            <input
-              type="password"
-              id="api-key-input"
-              class="api-key-section__input"
-              placeholder="gsk_..."
-              autocomplete="off"
-            />
-            <div class="api-key-section__actions">
-              <button id="save-key-btn" class="btn btn--primary btn--full">Save Groq Key</button>
-            </div>
-            <p id="api-key-status" class="api-key-section__status"></p>
-          </div>
-        </div>
-
-        <!-- HuggingFace API Key -->
-        <div class="settings-section">
-          <p class="settings-section__title">Hugging Face API</p>
-          <div class="api-key-section">
-            <label for="hf-api-key-input" class="api-key-section__label">API Key</label>
-            <input
-              type="password"
-              id="hf-api-key-input"
-              class="api-key-section__input"
-              placeholder="hf_..."
-              autocomplete="off"
-            />
-            <div class="api-key-section__actions">
-              <button id="save-hf-key-btn" class="btn btn--primary btn--full">Save HF Key</button>
-            </div>
-            <p id="hf-api-key-status" class="api-key-section__status"></p>
-          </div>
+          <p class="settings-section__title">Configuration</p>
+          <p class="settings-info">API keys and model settings are configured via the <code>.env</code> file on the server. See <code>.env.example</code> for all available options.</p>
         </div>
       </div>
     </div>
@@ -154,12 +126,6 @@
                 <path d="M21 19V5c0-1.1-.9-2-2-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2zM8.5 13.5l2.5 3.01L14.5 12l4.5 6H5l3.5-4.5z"/>
               </svg>
               <span class="btn--mode__label">Image</span>
-            </button>
-            <button type="button" id="video-mode-btn" class="btn btn--mode" aria-label="Toggle video generation mode" title="Generate video">
-              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width="16" height="16">
-                <path d="M17 10.5V7c0-.55-.45-1-1-1H4c-.55 0-1 .45-1 1v10c0 .55.45 1 1 1h12c.55 0 1-.45 1-1v-3.5l4 4v-11l-4 4z"/>
-              </svg>
-              <span class="btn--mode__label">Video</span>
             </button>
           </div>
           <button type="submit" id="send-btn" class="btn btn--send" aria-label="Send message">
