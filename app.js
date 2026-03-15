@@ -1,6 +1,7 @@
 const GROQ_API_URL = 'https://api.groq.com/openai/v1/chat/completions';
 const MODEL = 'llama-3.1-8b-instant';
-const HF_API_URL = 'https://api-inference.huggingface.co/models/black-forest-labs/FLUX.1-schnell';
+const HF_IMAGE_API_URL = 'https://api-inference.huggingface.co/models/black-forest-labs/FLUX.1-schnell';
+const HF_VIDEO_API_URL = 'https://api-inference.huggingface.co/models/tencent/HunyuanVideo';
 
 const STORAGE_KEY_GROQ = 'interlude_ai_groq_key';
 const STORAGE_KEY_HF   = 'interlude_ai_hf_key';
@@ -28,10 +29,12 @@ const settingsOverlay = document.getElementById('settings-overlay');
 const settingsClose   = document.getElementById('settings-close');
 const themeToggleInput = document.getElementById('theme-toggle-input');
 const imageModeBtn    = document.getElementById('image-mode-btn');
+const videoModeBtn    = document.getElementById('video-mode-btn');
 const inputHint       = document.getElementById('input-hint');
 
 let conversationHistory = [];
 let imageMode = false;
+let videoMode = false;
 
 // ─── Sidebar ───────────────────────────────────
 
@@ -145,6 +148,7 @@ function setImageMode(active) {
   imageMode = active;
   imageModeBtn.classList.toggle('is-active', active);
   if (active) {
+    if (videoMode) setVideoMode(false);
     messageInput.placeholder = 'Describe an image to generate…';
     inputHint.innerHTML = 'Image generation via Hugging Face · <kbd>Enter</kbd> to generate';
   } else {
@@ -158,6 +162,26 @@ imageModeBtn.addEventListener('click', () => {
   setImageMode(!imageMode);
 });
 
+// ─── Video mode toggle ─────────────────────────
+
+function setVideoMode(active) {
+  videoMode = active;
+  videoModeBtn.classList.toggle('is-active', active);
+  if (active) {
+    if (imageMode) setImageMode(false);
+    messageInput.placeholder = 'Describe a video to generate…';
+    inputHint.innerHTML = 'Video generation via Hugging Face · <kbd>Enter</kbd> to generate · Generation may take several minutes';
+  } else {
+    messageInput.placeholder = 'Message Interlude AI…';
+    inputHint.innerHTML = 'Press <kbd>Enter</kbd> to send · <kbd>Shift+Enter</kbd> for new line';
+  }
+  messageInput.focus();
+}
+
+videoModeBtn.addEventListener('click', () => {
+  setVideoMode(!videoMode);
+});
+
 // ─── Empty state ───────────────────────────────
 
 function renderEmptyState() {
@@ -165,7 +189,7 @@ function renderEmptyState() {
     <div class="empty-state">
       <div class="empty-state__icon">✦</div>
       <p class="empty-state__title">How can I help you today?</p>
-      <p class="empty-state__desc">Ask me anything — I'm powered by Groq's fast inference. Toggle the image icon to generate images via Hugging Face.</p>
+      <p class="empty-state__desc">Ask me anything. Toggle <strong>Image</strong> to generate images or <strong>Video</strong> to generate videos via Hugging Face.</p>
     </div>`;
 }
 
@@ -258,6 +282,7 @@ function setInputEnabled(enabled) {
   messageInput.disabled = !enabled;
   sendBtn.disabled = !enabled;
   imageModeBtn.disabled = !enabled;
+  videoModeBtn.disabled = !enabled;
 }
 
 // ─── Send chat message (Groq) ──────────────────
@@ -323,7 +348,7 @@ async function generateImage(prompt) {
   showTypingIndicator();
 
   try {
-    const response = await fetch(HF_API_URL, {
+    const response = await fetch(HF_IMAGE_API_URL, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -356,6 +381,103 @@ async function generateImage(prompt) {
   }
 }
 
+// ─── Generate video (Hugging Face) ────────────
+
+function createVideoMessageElement(videoUrl, prompt) {
+  const wrapper = document.createElement('div');
+  wrapper.className = 'message message--ai';
+
+  const avatar = document.createElement('div');
+  avatar.className = 'message__avatar';
+  avatar.textContent = 'AI';
+
+  const bubble = document.createElement('div');
+  bubble.className = 'message__bubble';
+
+  const video = document.createElement('video');
+  video.src = videoUrl;
+  video.controls = true;
+  video.className = 'message__video';
+  video.setAttribute('aria-label', prompt);
+
+  bubble.appendChild(video);
+  wrapper.appendChild(avatar);
+  wrapper.appendChild(bubble);
+  return wrapper;
+}
+
+function appendVideoMessage(videoUrl, prompt) {
+  const emptyState = chatWindow.querySelector('.empty-state');
+  if (emptyState) emptyState.remove();
+
+  const el = createVideoMessageElement(videoUrl, prompt);
+  chatWindow.appendChild(el);
+  chatWindow.scrollTop = chatWindow.scrollHeight;
+  return el;
+}
+
+async function generateVideo(prompt) {
+  const apiKey = getHfApiKey();
+  if (!apiKey) {
+    setHfApiKeyStatus('Please save your Hugging Face API key first.', 'error');
+    openSettings();
+    return;
+  }
+
+  appendMessage('user', prompt);
+  setInputEnabled(false);
+
+  const emptyState = chatWindow.querySelector('.empty-state');
+  if (emptyState) emptyState.remove();
+
+  const noticeEl = document.createElement('div');
+  noticeEl.className = 'message message--ai';
+  noticeEl.id = 'video-notice';
+  noticeEl.innerHTML = `
+    <div class="message__avatar">AI</div>
+    <div class="message__bubble video-generating-notice">
+      <div class="typing-indicator"><span></span><span></span><span></span></div>
+      <p class="video-generating-notice__text">⏳ Generating your video… this may take several minutes. Please wait.</p>
+    </div>`;
+  chatWindow.appendChild(noticeEl);
+  chatWindow.scrollTop = chatWindow.scrollHeight;
+
+  try {
+    const response = await fetch(HF_VIDEO_API_URL, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${apiKey}`,
+      },
+      body: JSON.stringify({ inputs: prompt }),
+    });
+
+    if (!response.ok) {
+      const errText = await response.text().catch(() => '');
+      let errMsg = `Request failed (${response.status})`;
+      try {
+        const errJson = JSON.parse(errText);
+        errMsg = errJson.error || errMsg;
+      } catch (_) {}
+      throw new Error(errMsg);
+    }
+
+    const blob = await response.blob();
+    const videoUrl = URL.createObjectURL(blob);
+
+    const notice = document.getElementById('video-notice');
+    if (notice) notice.remove();
+    appendVideoMessage(videoUrl, prompt);
+  } catch (err) {
+    const notice = document.getElementById('video-notice');
+    if (notice) notice.remove();
+    appendMessage('assistant', `Video generation error: ${err.message}`);
+  } finally {
+    setInputEnabled(true);
+    messageInput.focus();
+  }
+}
+
 // ─── Form submit ───────────────────────────────
 
 chatForm.addEventListener('submit', (e) => {
@@ -366,6 +488,8 @@ chatForm.addEventListener('submit', (e) => {
   autoResizeTextarea();
   if (imageMode) {
     generateImage(text);
+  } else if (videoMode) {
+    generateVideo(text);
   } else {
     sendMessage(text);
   }

@@ -493,6 +493,25 @@ body {
   display: block;
 }
 
+/* ─── Generated video in chat ────────────────── */
+.message__video {
+  max-width: 100%;
+  border-radius: var(--radius-sm);
+  display: block;
+}
+
+/* ─── Video generating notice ────────────────── */
+.video-generating-notice {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.video-generating-notice__text {
+  font-size: 0.85rem;
+  color: var(--color-text-muted);
+}
+
 /* ─── Typing indicator ───────────────────────── */
 .typing-indicator {
   display: flex;
@@ -529,12 +548,12 @@ body {
 
 .chat-form {
   display: flex;
-  gap: 0.5rem;
-  align-items: flex-end;
+  flex-direction: column;
+  gap: 0;
   background: var(--color-surface);
   border: 1px solid var(--color-border);
   border-radius: var(--radius);
-  padding: 0.65rem 0.65rem 0.65rem 0.65rem;
+  padding: 0.65rem 0.65rem 0.5rem;
   transition: border-color 0.2s;
 }
 
@@ -555,10 +574,23 @@ body {
   max-height: 160px;
   overflow-y: auto;
   scrollbar-width: thin;
+  padding: 0 0.25rem;
 }
 
 .chat-form__input::placeholder {
   color: var(--color-text-muted);
+}
+
+.chat-form__actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-top: 0.4rem;
+}
+
+.chat-form__modes {
+  display: flex;
+  gap: 0.35rem;
 }
 
 .input-area__hint {
@@ -640,21 +672,28 @@ body {
 .btn--mode {
   background: none;
   color: var(--color-text-muted);
-  padding: 0.45rem;
-  width: 34px;
-  height: 34px;
+  padding: 0.3rem 0.6rem;
+  height: 28px;
   display: flex;
   align-items: center;
-  justify-content: center;
+  gap: 0.3rem;
   flex-shrink: 0;
-  border: 1px solid transparent;
-  border-radius: var(--radius-sm);
+  border: 1px solid var(--color-border);
+  border-radius: 999px;
   transition: color 0.2s, background 0.2s, border-color 0.2s;
+  font-size: 0.78rem;
+  font-weight: 500;
+}
+
+.btn--mode__label {
+  font-size: 0.78rem;
+  font-weight: 500;
 }
 
 .btn--mode:hover {
   color: var(--color-primary);
   background: var(--color-surface-2);
+  border-color: var(--color-primary);
 }
 
 .btn--mode.is-active {
@@ -779,5 +818,15 @@ body {
 
   .message {
     max-width: 92%;
+  }
+
+  .btn--mode__label {
+    display: none;
+  }
+
+  .btn--mode {
+    width: 28px;
+    padding: 0.3rem;
+    justify-content: center;
   }
 }
