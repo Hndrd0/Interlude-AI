@@ -51,11 +51,41 @@
           </div>
           <p id="api-key-status" class="api-key-section__status"></p>
         </div>
+
+        <div class="api-key-section">
+          <label for="hf-api-key-input" class="api-key-section__label">Hugging Face API Key</label>
+          <div class="api-key-section__row">
+            <input
+              type="password"
+              id="hf-api-key-input"
+              class="api-key-section__input"
+              placeholder="hf_..."
+              autocomplete="off"
+            />
+          </div>
+          <div class="api-key-section__actions">
+            <button id="save-hf-key-btn" class="btn btn--primary btn--full">Save Key</button>
+          </div>
+          <p id="hf-api-key-status" class="api-key-section__status"></p>
+        </div>
+
+        <div class="mode-section">
+          <p class="sidebar__section-title">Mode</p>
+          <div class="mode-toggle" role="group" aria-label="Select mode">
+            <button id="mode-chat-btn" class="btn mode-toggle__btn mode-toggle__btn--active" data-mode="chat">
+              💬 Chat
+            </button>
+            <button id="mode-image-btn" class="btn mode-toggle__btn" data-mode="image">
+              🖼 Image Gen
+            </button>
+          </div>
+          <p id="mode-status" class="api-key-section__status"></p>
+        </div>
       </div>
     </div>
 
     <div class="sidebar__footer">
-      <p class="sidebar__footer-text">Powered by Groq · llama-3.1-8b-instant</p>
+      <p class="sidebar__footer-text">Groq · llama-3.1-8b-instant · FLUX.2-klein-9B</p>
     </div>
   </aside>
 
