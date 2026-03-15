@@ -1,6 +1,6 @@
 const GROQ_API_URL = 'https://api.groq.com/openai/v1/chat/completions';
 const MODEL = 'llama-3.1-8b-instant';
-const HF_IMAGE_API_URL = 'https://api-inference.huggingface.co/models/black-forest-labs/FLUX.1-schnell';
+const HF_IMAGE_API_URL = 'https://router.huggingface.co/models/black-forest-labs/FLUX.1-schnell';
 const HF_VIDEO_API_URL = 'https://api-inference.huggingface.co/models/tencent/HunyuanVideo';
 
 const STORAGE_KEY_GROQ = 'interlude_ai_groq_key';
