@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Interlude AI</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div class="container">
+    <header class="header">
+      <h1 class="header__title">Interlude AI</h1>
+      <p class="header__subtitle">Powered by Groq</p>
+    </header>
+
+    <div id="api-key-section" class="api-key-section">
+      <label for="api-key-input" class="api-key-section__label">Enter your Groq API Key</label>
+      <div class="api-key-section__row">
+        <input
+          type="password"
+          id="api-key-input"
+          class="api-key-section__input"
+          placeholder="gsk_..."
+          autocomplete="off"
+        />
+        <button id="save-key-btn" class="btn btn--primary">Save</button>
+      </div>
+      <p id="api-key-status" class="api-key-section__status"></p>
+    </div>
+
+    <div id="chat-window" class="chat-window" aria-live="polite" aria-label="Chat messages"></div>
+
+    <form id="chat-form" class="chat-form" autocomplete="off">
+      <textarea
+        id="message-input"
+        class="chat-form__input"
+        placeholder="Type a message…"
+        rows="1"
+        aria-label="Message input"
+      ></textarea>
+      <button type="submit" id="send-btn" class="btn btn--send" aria-label="Send message">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width="20" height="20">
+          <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/>
+        </svg>
+      </button>
+    </form>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
