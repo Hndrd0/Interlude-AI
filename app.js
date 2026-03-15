@@ -189,7 +189,7 @@ function renderEmptyState() {
     <div class="empty-state">
       <div class="empty-state__icon">✦</div>
       <p class="empty-state__title">How can I help you today?</p>
-      <p class="empty-state__desc">Ask me anything, toggle <strong>Image</strong> to generate images, or toggle <strong>Video</strong> to generate videos via Hugging Face.</p>
+      <p class="empty-state__desc">Ask me anything. Toggle <strong>Image</strong> to generate images or <strong>Video</strong> to generate videos via Hugging Face.</p>
     </div>`;
 }
 
