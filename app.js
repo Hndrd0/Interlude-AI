@@ -2,9 +2,15 @@ const GROQ_API_URL = 'https://api.groq.com/openai/v1/chat/completions';
 const MODEL = 'llama-3.1-8b-instant';
 const STORAGE_KEY = 'interlude_ai_groq_key';
 
+const HF_API_URL = 'https://api-inference.huggingface.co/models/black-forest-labs/FLUX.2-klein-9B';
+const HF_STORAGE_KEY = 'interlude_ai_hf_key';
+
 const apiKeyInput = document.getElementById('api-key-input');
 const saveKeyBtn = document.getElementById('save-key-btn');
 const apiKeyStatus = document.getElementById('api-key-status');
+const hfApiKeyInput = document.getElementById('hf-api-key-input');
+const saveHfKeyBtn = document.getElementById('save-hf-key-btn');
+const hfApiKeyStatus = document.getElementById('hf-api-key-status');
 const chatWindow = document.getElementById('chat-window');
 const chatForm = document.getElementById('chat-form');
 const messageInput = document.getElementById('message-input');
@@ -14,8 +20,13 @@ const sidebarOverlay = document.getElementById('sidebar-overlay');
 const sidebarToggle = document.getElementById('sidebar-toggle');
 const sidebarClose = document.getElementById('sidebar-close');
 const newChatBtn = document.getElementById('new-chat-btn');
+const modeChatBtn = document.getElementById('mode-chat-btn');
+const modeImageBtn = document.getElementById('mode-image-btn');
+const modeStatus = document.getElementById('mode-status');
 
 let conversationHistory = [];
+let currentMode = 'chat'; // 'chat' | 'image'
+let imageObjectUrls = [];
 
 // ─── Sidebar ───────────────────────────────────────────────
 
@@ -37,12 +48,14 @@ sidebarOverlay.addEventListener('click', closeSidebar);
 
 newChatBtn.addEventListener('click', () => {
   conversationHistory = [];
+  imageObjectUrls.forEach(url => URL.revokeObjectURL(url));
+  imageObjectUrls = [];
   renderEmptyState();
   closeSidebar();
   messageInput.focus();
 });
 
-// ─── API Key ───────────────────────────────────────────────
+// ─── API Key (Groq) ────────────────────────────────────────
 
 function getApiKey() {
   return localStorage.getItem(STORAGE_KEY) || '';
@@ -63,6 +76,49 @@ saveKeyBtn.addEventListener('click', () => {
   apiKeyInput.value = '';
   setApiKeyStatus('API key saved successfully.', 'success');
 });
+
+// ─── API Key (Hugging Face) ────────────────────────────────
+
+function getHfApiKey() {
+  return localStorage.getItem(HF_STORAGE_KEY) || '';
+}
+
+function setHfApiKeyStatus(message, type) {
+  hfApiKeyStatus.textContent = message;
+  hfApiKeyStatus.className = `api-key-section__status api-key-section__status--${type}`;
+}
+
+saveHfKeyBtn.addEventListener('click', () => {
+  const key = hfApiKeyInput.value.trim();
+  if (!key) {
+    setHfApiKeyStatus('Please enter a valid API key.', 'error');
+    return;
+  }
+  localStorage.setItem(HF_STORAGE_KEY, key);
+  hfApiKeyInput.value = '';
+  setHfApiKeyStatus('API key saved successfully.', 'success');
+});
+
+// ─── Mode Toggle ───────────────────────────────────────────
+
+function setMode(mode) {
+  currentMode = mode;
+  if (mode === 'chat') {
+    modeChatBtn.classList.add('mode-toggle__btn--active');
+    modeImageBtn.classList.remove('mode-toggle__btn--active');
+    messageInput.placeholder = 'Message Interlude AI…';
+    modeStatus.textContent = '';
+  } else {
+    modeImageBtn.classList.add('mode-toggle__btn--active');
+    modeChatBtn.classList.remove('mode-toggle__btn--active');
+    messageInput.placeholder = 'Describe an image to generate…';
+    modeStatus.textContent = 'Using FLUX.2-klein-9B';
+    modeStatus.className = 'api-key-section__status api-key-section__status--success';
+  }
+}
+
+modeChatBtn.addEventListener('click', () => setMode('chat'));
+modeImageBtn.addEventListener('click', () => setMode('image'));
 
 // ─── Empty state ───────────────────────────────────────────
 
@@ -94,11 +150,43 @@ function createMessageElement(role, text) {
   return wrapper;
 }
 
+function createImageMessageElement(objectUrl) {
+  const wrapper = document.createElement('div');
+  wrapper.className = 'message message--ai';
+
+  const avatar = document.createElement('div');
+  avatar.className = 'message__avatar';
+  avatar.textContent = 'AI';
+
+  const bubble = document.createElement('div');
+  bubble.className = 'message__bubble message__bubble--image';
+
+  const img = document.createElement('img');
+  img.src = objectUrl;
+  img.alt = 'Generated image';
+  img.className = 'generated-image';
+
+  bubble.appendChild(img);
+  wrapper.appendChild(avatar);
+  wrapper.appendChild(bubble);
+  return wrapper;
+}
+
 function appendMessage(role, text) {
   const emptyState = chatWindow.querySelector('.empty-state');
   if (emptyState) emptyState.remove();
 
   const el = createMessageElement(role, text);
+  chatWindow.appendChild(el);
+  chatWindow.scrollTop = chatWindow.scrollHeight;
+  return el;
+}
+
+function appendImageMessage(objectUrl) {
+  const emptyState = chatWindow.querySelector('.empty-state');
+  if (emptyState) emptyState.remove();
+
+  const el = createImageMessageElement(objectUrl);
   chatWindow.appendChild(el);
   chatWindow.scrollTop = chatWindow.scrollHeight;
   return el;
@@ -133,9 +221,58 @@ function setInputEnabled(enabled) {
   sendBtn.disabled = !enabled;
 }
 
+// ─── Image generation ──────────────────────────────────────
+
+async function generateImage(prompt) {
+  const hfKey = getHfApiKey();
+  if (!hfKey) {
+    setHfApiKeyStatus('Please save your Hugging Face API key first.', 'error');
+    openSidebar();
+    return;
+  }
+
+  appendMessage('user', prompt);
+  setInputEnabled(false);
+  showTypingIndicator();
+
+  try {
+    const response = await fetch(HF_API_URL, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${hfKey}`,
+      },
+      body: JSON.stringify({ inputs: prompt }),
+    });
+
+    if (!response.ok) {
+      const err = await response.json().catch(() => ({}));
+      throw new Error(err.error || `Request failed (${response.status}): unable to parse error response`);
+    }
+
+    const blob = await response.blob();
+    const objectUrl = URL.createObjectURL(blob);
+    imageObjectUrls.push(objectUrl);
+
+    hideTypingIndicator();
+    appendImageMessage(objectUrl);
+  } catch (err) {
+    hideTypingIndicator();
+    appendMessage('assistant', `Error: ${err.message}`);
+  } finally {
+    setInputEnabled(true);
+    messageInput.focus();
+  }
+}
+
 // ─── Send message ──────────────────────────────────────────
 
 async function sendMessage(userText) {
+  if (currentMode === 'image') {
+    await generateImage(userText);
+    return;
+  }
+
   const apiKey = getApiKey();
   if (!apiKey) {
     setApiKeyStatus('Please save your Groq API key first.', 'error');
@@ -208,5 +345,8 @@ messageInput.addEventListener('input', autoResizeTextarea);
 
 if (getApiKey()) {
   setApiKeyStatus('API key loaded.', 'success');
+}
+if (getHfApiKey()) {
+  setHfApiKeyStatus('API key loaded.', 'success');
 }
 renderEmptyState();
