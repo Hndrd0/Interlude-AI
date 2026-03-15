@@ -82,10 +82,49 @@
           </div>
         </div>
 
-        <!-- Info -->
+        <!-- Groq -->
         <div class="settings-section">
-          <p class="settings-section__title">Configuration</p>
-          <p class="settings-info">API keys and model settings are configured via the <code>.env</code> file on the server. See <code>.env.example</code> for all available options.</p>
+          <p class="settings-section__title">Groq</p>
+          <div class="settings-field">
+            <label class="settings-label" for="groq-key-input">API Key</label>
+            <input type="password" id="groq-key-input" class="settings-input" placeholder="gsk_…" autocomplete="off" />
+          </div>
+          <div class="settings-field">
+            <label class="settings-label" for="groq-model-input">Model <span class="settings-optional">(optional)</span></label>
+            <input type="text" id="groq-model-input" class="settings-input" placeholder="llama-3.1-8b-instant" />
+          </div>
+          <div class="settings-field">
+            <label class="settings-label" for="system-prompt-input">System Prompt <span class="settings-optional">(optional)</span></label>
+            <textarea id="system-prompt-input" class="settings-input settings-textarea" rows="3" placeholder="You are Interlude AI, a helpful and knowledgeable assistant."></textarea>
+          </div>
+        </div>
+
+        <!-- MongoDB -->
+        <div class="settings-section">
+          <p class="settings-section__title">MongoDB <span class="settings-optional">(optional)</span></p>
+          <p class="settings-info">Connect to MongoDB Atlas Data API to sync chats across devices. Leave blank to use local browser storage only.</p>
+          <div class="settings-field">
+            <label class="settings-label" for="mongo-url-input">Data API Base URL</label>
+            <input type="url" id="mongo-url-input" class="settings-input" placeholder="https://data.mongodb-api.com/app/…/endpoint/data/v1" />
+          </div>
+          <div class="settings-field">
+            <label class="settings-label" for="mongo-key-input">API Key</label>
+            <input type="password" id="mongo-key-input" class="settings-input" placeholder="Atlas Data API key" autocomplete="off" />
+          </div>
+          <div class="settings-field">
+            <label class="settings-label" for="mongo-db-input">Database <span class="settings-optional">(default: interlude-ai)</span></label>
+            <input type="text" id="mongo-db-input" class="settings-input" placeholder="interlude-ai" />
+          </div>
+          <div class="settings-field">
+            <label class="settings-label" for="mongo-ds-input">Data Source <span class="settings-optional">(default: Cluster0)</span></label>
+            <input type="text" id="mongo-ds-input" class="settings-input" placeholder="Cluster0" />
+          </div>
+        </div>
+
+        <!-- Save -->
+        <div class="settings-section">
+          <p class="settings-info">Settings are saved in your browser's <code>localStorage</code>. Only use this app on devices you trust.</p>
+          <button id="save-settings-btn" class="btn btn--primary btn--full">Save Settings</button>
         </div>
       </div>
     </div>
@@ -120,14 +159,7 @@
           aria-label="Message input"
         ></textarea>
         <div class="chat-form__actions">
-          <div class="chat-form__modes">
-            <button type="button" id="image-mode-btn" class="btn btn--mode" aria-label="Toggle image generation mode" title="Generate image">
-              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width="16" height="16">
-                <path d="M21 19V5c0-1.1-.9-2-2-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2zM8.5 13.5l2.5 3.01L14.5 12l4.5 6H5l3.5-4.5z"/>
-              </svg>
-              <span class="btn--mode__label">Image</span>
-            </button>
-          </div>
+          <div class="chat-form__modes"></div>
           <button type="submit" id="send-btn" class="btn btn--send" aria-label="Send message">
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width="18" height="18">
               <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/>

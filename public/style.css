@@ -237,6 +237,52 @@ body {
   font-size: 0.8rem;
 }
 
+/* ─── Settings form fields ─────────────────── */
+.settings-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+
+.settings-label {
+  font-size: 0.82rem;
+  font-weight: 500;
+  color: var(--color-text);
+}
+
+.settings-optional {
+  font-size: 0.75rem;
+  font-weight: 400;
+  color: var(--color-text-muted);
+}
+
+.settings-input {
+  width: 100%;
+  background: var(--color-surface-2);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  color: var(--color-text);
+  font-family: var(--font);
+  font-size: 0.87rem;
+  padding: 0.45rem 0.7rem;
+  outline: none;
+  transition: border-color 0.2s;
+}
+
+.settings-input:focus {
+  border-color: var(--color-primary);
+}
+
+.settings-input::placeholder {
+  color: var(--color-text-muted);
+}
+
+.settings-textarea {
+  resize: vertical;
+  min-height: 72px;
+  line-height: 1.5;
+}
+
 /* ─── Sidebar overlay (mobile) ──────────────── */
 .sidebar-overlay {
   display: none;
