@@ -7,7 +7,7 @@ const Chat      = require('./models/Chat');
 
 const app = express();
 app.use(cors());
-app.use(express.json({ limit: '10mb' }));
+app.use(express.json());
 app.use(express.static('./public'));
 
 // ─── Rate limiting ──────────────────────────────
@@ -135,59 +135,6 @@ app.post('/api/chat', async (req, res) => {
     await chat.save();
 
     res.json({ chatId: chat._id, reply, title: chat.title });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
-
-// ─── POST /api/generate-image ───────────────────
-// Generates an image via Hugging Face and stores it as base64
-
-app.post('/api/generate-image', async (req, res) => {
-  const { chatId, prompt } = req.body;
-  if (!prompt || typeof prompt !== 'string' || !prompt.trim()) {
-    return res.status(400).json({ error: 'prompt is required' });
-  }
-
-  try {
-    let chat;
-    if (chatId) {
-      chat = await Chat.findById(chatId);
-      if (!chat) return res.status(404).json({ error: 'Chat not found' });
-    } else {
-      chat = new Chat({ title: `Image: ${prompt.slice(0, 48)}`, messages: [] });
-    }
-
-    chat.messages.push({ role: 'user', content: prompt, type: 'text' });
-
-    const hfRes = await fetch(
-      process.env.HF_IMAGE_API_URL || 'https://router.huggingface.co/models/black-forest-labs/FLUX.1-schnell',
-      {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${process.env.HF_API_KEY}`,
-        },
-        body: JSON.stringify({ inputs: prompt }),
-      }
-    );
-
-    if (!hfRes.ok) {
-      const errText = await hfRes.text().catch(() => '');
-      let errMsg = `Request failed (${hfRes.status})`;
-      try { errMsg = JSON.parse(errText).error || errMsg; } catch (_) {}
-      throw new Error(errMsg);
-    }
-
-    const imageBuffer  = await hfRes.arrayBuffer();
-    const contentType  = hfRes.headers.get('content-type') || 'image/jpeg';
-    const imageData    = `data:${contentType};base64,${Buffer.from(imageBuffer).toString('base64')}`;
-
-    chat.messages.push({ role: 'assistant', content: imageData, type: 'image' });
-    chat.updatedAt = new Date();
-    await chat.save();
-
-    res.json({ chatId: chat._id, imageData, title: chat.title });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
