@@ -125,22 +125,31 @@
           </div>
         </div>
 
-        <!-- Text-to-Speech (ElevenLabs via Groq) -->
+        <!-- Text-to-Speech (Orpheus via Groq) -->
         <div class="settings-section">
           <p class="settings-section__title">Text-to-Speech <span class="settings-optional">(Groq)</span></p>
           <p class="settings-info">Text-to-speech uses the Groq API key configured above. Toggle the <strong>Speak</strong> button in the chat toolbar to enable auto-playback.</p>
           <div class="settings-field">
-            <label class="settings-label" for="tts-model-input">TTS Model <span class="settings-optional">(default: ElevenLabs TTS)</span></label>
+            <label class="settings-label" for="tts-model-input">TTS Model <span class="settings-optional">(default: Orpheus English)</span></label>
             <select id="tts-model-input" class="settings-input">
-              <option value="elevenlabs/tts">ElevenLabs TTS (default)</option>
-              <option value="canopy/orpheus-3-3b-english-ft">Orpheus English</option>
+              <option value="canopylabs/orpheus-v1-english">Orpheus English (default)</option>
+              <option value="elevenlabs/tts">ElevenLabs TTS</option>
+              <option value="canopy/orpheus-3-3b-arabic-sa-ft">Orpheus Arabic Saudi</option>
             </select>
           </div>
           <div class="settings-field">
-            <label class="settings-label" for="tts-voice-input">Voice <span class="settings-optional">(default: aria for ElevenLabs · tara for Orpheus)</span></label>
-            <input type="text" id="tts-voice-input" class="settings-input" placeholder="aria" list="tts-voice-suggestions" autocomplete="off" />
+            <label class="settings-label" for="tts-voice-input">Voice <span class="settings-optional">(default: tara for Orpheus · aria for ElevenLabs)</span></label>
+            <input type="text" id="tts-voice-input" class="settings-input" placeholder="tara" list="tts-voice-suggestions" autocomplete="off" />
             <datalist id="tts-voice-suggestions">
-              <option value="aria">Aria – ElevenLabs (default)</option>
+              <option value="tara">Tara – Orpheus (default)</option>
+              <option value="leah">Leah – Orpheus</option>
+              <option value="jess">Jess – Orpheus</option>
+              <option value="leo">Leo – Orpheus</option>
+              <option value="dan">Dan – Orpheus</option>
+              <option value="mia">Mia – Orpheus</option>
+              <option value="zac">Zac – Orpheus</option>
+              <option value="zoe">Zoe – Orpheus</option>
+              <option value="aria">Aria – ElevenLabs</option>
               <option value="roger">Roger – ElevenLabs</option>
               <option value="sarah">Sarah – ElevenLabs</option>
               <option value="charlie">Charlie – ElevenLabs</option>
@@ -154,14 +163,6 @@
               <option value="jessica">Jessica – ElevenLabs</option>
               <option value="brian">Brian – ElevenLabs</option>
               <option value="lily">Lily – ElevenLabs</option>
-              <option value="tara">Tara – Orpheus (default)</option>
-              <option value="leah">Leah – Orpheus</option>
-              <option value="jess">Jess – Orpheus</option>
-              <option value="leo">Leo – Orpheus</option>
-              <option value="dan">Dan – Orpheus</option>
-              <option value="mia">Mia – Orpheus</option>
-              <option value="zac">Zac – Orpheus</option>
-              <option value="zoe">Zoe – Orpheus</option>
             </datalist>
           </div>
         </div>

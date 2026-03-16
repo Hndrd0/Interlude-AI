@@ -19,8 +19,8 @@ const DEFAULT_REASONING_MAX_TOKENS = 8192;
 const GROQ_API_URL                 = 'https://api.groq.com/openai/v1/chat/completions';
 const GROQ_WHISPER_URL             = 'https://api.groq.com/openai/v1/audio/transcriptions';
 const GROQ_TTS_URL                 = 'https://api.groq.com/openai/v1/audio/speech';
-const GROQ_TTS_MODEL               = 'elevenlabs/tts';
-const DEFAULT_TTS_VOICE            = 'aria';
+const GROQ_TTS_MODEL               = 'canopylabs/orpheus-v1-english';
+const DEFAULT_TTS_VOICE            = 'tara';
 const VISION_MODEL                 = 'meta-llama/llama-4-scout-17b-16e-instruct';
 const DEFAULT_IMAGE_PROMPT         = 'What do you see in this image?';
 const CAMERA_JPEG_QUALITY          = 0.85;
@@ -744,7 +744,7 @@ function toggleTTSMode() {
 
 ttsBtn.addEventListener('click', toggleTTSMode);
 
-// ─── Groq TTS (ElevenLabs) ─────────────────────
+// ─── Groq TTS (Orpheus) ────────────────────────
 
 async function callGroqTTS(text) {
   const apiKey = localStorage.getItem(STORAGE_KEY_GROQ_KEY);
@@ -752,7 +752,7 @@ async function callGroqTTS(text) {
 
   try {
     const model        = localStorage.getItem(STORAGE_KEY_TTS_MODEL) || GROQ_TTS_MODEL;
-    const defaultVoice = model === 'canopy/orpheus-3-3b-english-ft' ? 'tara' : DEFAULT_TTS_VOICE;
+    const defaultVoice = model === 'elevenlabs/tts' ? 'aria' : 'tara';
     const voice        = localStorage.getItem(STORAGE_KEY_TTS_VOICE) || defaultVoice;
     const res = await fetch(GROQ_TTS_URL, {
       method: 'POST',
