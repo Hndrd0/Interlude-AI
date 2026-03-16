@@ -852,6 +852,19 @@ body {
   max-width: 280px;
 }
 
+/* ─── Microphone recording state ──────────────── */
+.btn--mode.is-recording {
+  color: var(--color-error);
+  background: rgba(224, 108, 117, 0.12);
+  border-color: var(--color-error);
+  animation: mic-pulse 1.2s ease infinite;
+}
+
+@keyframes mic-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(224, 108, 117, 0); }
+  50%       { box-shadow: 0 0 0 4px rgba(224, 108, 117, 0.25); }
+}
+
 /* ─── Responsive ─────────────────────────────── */
 @media (max-width: 640px) {
   .sidebar {

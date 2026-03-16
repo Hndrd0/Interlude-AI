@@ -7,11 +7,16 @@ const STORAGE_KEY_MONGO_URL     = 'interlude_ai_mongo_url';
 const STORAGE_KEY_MONGO_KEY     = 'interlude_ai_mongo_key';
 const STORAGE_KEY_MONGO_DB      = 'interlude_ai_mongo_db';
 const STORAGE_KEY_MONGO_DS      = 'interlude_ai_mongo_datasource';
+const STORAGE_KEY_OPENAI_KEY    = 'interlude_ai_openai_key';
+const STORAGE_KEY_REASONING_MODEL = 'interlude_ai_reasoning_model';
 
-const DEFAULT_GROQ_MODEL    = 'llama-3.1-8b-instant';
-const DEFAULT_SYSTEM_PROMPT = 'You are Interlude AI, a helpful and knowledgeable assistant.';
-const DEFAULT_MAX_TOKENS    = 1024;
-const GROQ_API_URL          = 'https://api.groq.com/openai/v1/chat/completions';
+const DEFAULT_GROQ_MODEL      = 'llama-3.1-8b-instant';
+const DEFAULT_SYSTEM_PROMPT   = 'You are Interlude AI, a helpful and knowledgeable assistant.';
+const DEFAULT_MAX_TOKENS      = 1024;
+const DEFAULT_REASONING_MODEL = 'o3-mini';
+const GROQ_API_URL            = 'https://api.groq.com/openai/v1/chat/completions';
+const GROQ_WHISPER_URL        = 'https://api.groq.com/openai/v1/audio/transcriptions';
+const OPENAI_API_URL          = 'https://api.openai.com/v1/chat/completions';
 
 // ─── DOM references ────────────────────────────
 
@@ -37,7 +42,12 @@ const mongoUrlInput     = document.getElementById('mongo-url-input');
 const mongoKeyInput     = document.getElementById('mongo-key-input');
 const mongoDbInput      = document.getElementById('mongo-db-input');
 const mongoDsInput      = document.getElementById('mongo-ds-input');
+const openaiKeyInput    = document.getElementById('openai-key-input');
+const reasoningModelInput = document.getElementById('reasoning-model-input');
 const saveSettingsBtn   = document.getElementById('save-settings-btn');
+
+const micBtn       = document.getElementById('mic-btn');
+const reasoningBtn = document.getElementById('reasoning-btn');
 
 let currentChatId = null;
 
@@ -60,13 +70,15 @@ sidebarOverlay.addEventListener('click', closeSidebar);
 // ─── Settings modal ─────────────────────────────
 
 function openSettings() {
-  groqKeyInput.value      = localStorage.getItem(STORAGE_KEY_GROQ_KEY)      || '';
-  groqModelInput.value    = localStorage.getItem(STORAGE_KEY_GROQ_MODEL)    || '';
-  systemPromptInput.value = localStorage.getItem(STORAGE_KEY_SYSTEM_PROMPT) || '';
-  mongoUrlInput.value     = localStorage.getItem(STORAGE_KEY_MONGO_URL)     || '';
-  mongoKeyInput.value     = localStorage.getItem(STORAGE_KEY_MONGO_KEY)     || '';
-  mongoDbInput.value      = localStorage.getItem(STORAGE_KEY_MONGO_DB)      || '';
-  mongoDsInput.value      = localStorage.getItem(STORAGE_KEY_MONGO_DS)      || '';
+  groqKeyInput.value        = localStorage.getItem(STORAGE_KEY_GROQ_KEY)          || '';
+  groqModelInput.value      = localStorage.getItem(STORAGE_KEY_GROQ_MODEL)        || '';
+  systemPromptInput.value   = localStorage.getItem(STORAGE_KEY_SYSTEM_PROMPT)     || '';
+  mongoUrlInput.value       = localStorage.getItem(STORAGE_KEY_MONGO_URL)         || '';
+  mongoKeyInput.value       = localStorage.getItem(STORAGE_KEY_MONGO_KEY)         || '';
+  mongoDbInput.value        = localStorage.getItem(STORAGE_KEY_MONGO_DB)          || '';
+  mongoDsInput.value        = localStorage.getItem(STORAGE_KEY_MONGO_DS)          || '';
+  openaiKeyInput.value      = localStorage.getItem(STORAGE_KEY_OPENAI_KEY)        || '';
+  reasoningModelInput.value = localStorage.getItem(STORAGE_KEY_REASONING_MODEL)   || '';
   settingsOverlay.classList.add('is-open');
   settingsOverlay.setAttribute('aria-hidden', 'false');
 }
@@ -78,13 +90,15 @@ function closeSettings() {
 
 function saveSettings() {
   const set = (key, val) => val ? localStorage.setItem(key, val) : localStorage.removeItem(key);
-  set(STORAGE_KEY_GROQ_KEY,      groqKeyInput.value.trim());
-  set(STORAGE_KEY_GROQ_MODEL,    groqModelInput.value.trim());
-  set(STORAGE_KEY_SYSTEM_PROMPT, systemPromptInput.value.trim());
-  set(STORAGE_KEY_MONGO_URL,     mongoUrlInput.value.trim());
-  set(STORAGE_KEY_MONGO_KEY,     mongoKeyInput.value.trim());
-  set(STORAGE_KEY_MONGO_DB,      mongoDbInput.value.trim());
-  set(STORAGE_KEY_MONGO_DS,      mongoDsInput.value.trim());
+  set(STORAGE_KEY_GROQ_KEY,        groqKeyInput.value.trim());
+  set(STORAGE_KEY_GROQ_MODEL,      groqModelInput.value.trim());
+  set(STORAGE_KEY_SYSTEM_PROMPT,   systemPromptInput.value.trim());
+  set(STORAGE_KEY_MONGO_URL,       mongoUrlInput.value.trim());
+  set(STORAGE_KEY_MONGO_KEY,       mongoKeyInput.value.trim());
+  set(STORAGE_KEY_MONGO_DB,        mongoDbInput.value.trim());
+  set(STORAGE_KEY_MONGO_DS,        mongoDsInput.value.trim());
+  set(STORAGE_KEY_OPENAI_KEY,      openaiKeyInput.value.trim());
+  set(STORAGE_KEY_REASONING_MODEL, reasoningModelInput.value.trim());
   closeSettings();
 }
 
@@ -406,6 +420,149 @@ async function callGroq(messages) {
   return data.choices?.[0]?.message?.content ?? 'No response received.';
 }
 
+// ─── OpenAI Reasoning API ──────────────────────
+
+async function callOpenAIReasoning(messages) {
+  const apiKey = localStorage.getItem(STORAGE_KEY_OPENAI_KEY);
+  if (!apiKey) {
+    throw new Error('OpenAI API key not configured for Reasoning mode. Open ⚙ Settings to add your OpenAI API key.');
+  }
+  const model        = localStorage.getItem(STORAGE_KEY_REASONING_MODEL) || DEFAULT_REASONING_MODEL;
+  const systemPrompt = localStorage.getItem(STORAGE_KEY_SYSTEM_PROMPT) || DEFAULT_SYSTEM_PROMPT;
+
+  const openaiMessages = [{ role: 'system', content: systemPrompt }, ...messages];
+
+  const res = await fetch(OPENAI_API_URL, {
+    method:  'POST',
+    headers: {
+      'Content-Type':  'application/json',
+      'Authorization': `Bearer ${apiKey}`,
+    },
+    body: JSON.stringify({ model, messages: openaiMessages }),
+  });
+
+  if (!res.ok) {
+    const errData = await res.json().catch(() => ({}));
+    throw new Error(errData.error?.message || `OpenAI API error (${res.status})`);
+  }
+
+  const data = await res.json();
+  return data.choices?.[0]?.message?.content ?? 'No response received.';
+}
+
+// ─── Reasoning mode ────────────────────────────
+
+let isReasoningMode = false;
+
+function toggleReasoningMode() {
+  isReasoningMode = !isReasoningMode;
+  reasoningBtn.classList.toggle('is-active', isReasoningMode);
+  reasoningBtn.setAttribute('aria-pressed', String(isReasoningMode));
+}
+
+reasoningBtn.addEventListener('click', toggleReasoningMode);
+
+// ─── Microphone / Speech-to-Text ───────────────
+
+let mediaRecorder  = null;
+let audioChunks    = [];
+let isRecording    = false;
+
+micBtn.addEventListener('click', () => {
+  if (isRecording) {
+    stopRecording();
+  } else {
+    startRecording();
+  }
+});
+
+async function startRecording() {
+  if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+    appendMessage('assistant', 'Error: Microphone access is not supported in this browser.');
+    return;
+  }
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    audioChunks  = [];
+
+    const mimeType = MediaRecorder.isTypeSupported('audio/webm;codecs=opus')
+      ? 'audio/webm;codecs=opus'
+      : MediaRecorder.isTypeSupported('audio/webm')
+        ? 'audio/webm'
+        : '';
+
+    mediaRecorder = mimeType ? new MediaRecorder(stream, { mimeType }) : new MediaRecorder(stream);
+
+    mediaRecorder.ondataavailable = (e) => {
+      if (e.data && e.data.size > 0) audioChunks.push(e.data);
+    };
+
+    mediaRecorder.onstop = async () => {
+      stream.getTracks().forEach(t => t.stop());
+      const audioBlob = new Blob(audioChunks, { type: mediaRecorder.mimeType || 'audio/webm' });
+      await processAudioTranscription(audioBlob);
+    };
+
+    mediaRecorder.start();
+    isRecording = true;
+    micBtn.classList.add('is-recording');
+    micBtn.setAttribute('aria-label', 'Stop recording');
+  } catch (err) {
+    appendMessage('assistant', `Microphone error: ${err.message}`);
+  }
+}
+
+function stopRecording() {
+  if (mediaRecorder && mediaRecorder.state !== 'inactive') {
+    mediaRecorder.stop();
+  }
+  isRecording = false;
+  micBtn.classList.remove('is-recording');
+  micBtn.setAttribute('aria-label', 'Start recording');
+}
+
+async function processAudioTranscription(audioBlob) {
+  const apiKey = localStorage.getItem(STORAGE_KEY_GROQ_KEY);
+  if (!apiKey) {
+    appendMessage('assistant', 'Error: Groq API key not configured. Open ⚙ Settings to add your API key for transcription.');
+    return;
+  }
+
+  micBtn.disabled = true;
+  try {
+    const formData = new FormData();
+    formData.append('file', audioBlob, 'recording.webm');
+    formData.append('model', 'whisper-large-v3');
+    formData.append('response_format', 'json');
+
+    const res = await fetch(GROQ_WHISPER_URL, {
+      method:  'POST',
+      headers: { 'Authorization': `Bearer ${apiKey}` },
+      body:    formData,
+    });
+
+    if (!res.ok) {
+      const errData = await res.json().catch(() => ({}));
+      throw new Error(errData.error?.message || `Transcription error (${res.status})`);
+    }
+
+    const data = await res.json();
+    const text = (data.text || '').trim();
+
+    if (text) {
+      messageInput.value = messageInput.value
+        ? `${messageInput.value} ${text}`
+        : text;
+      autoResizeTextarea();
+      messageInput.focus();
+    }
+  } catch (err) {
+    appendMessage('assistant', `Transcription error: ${err.message}`);
+  } finally {
+    micBtn.disabled = false;
+  }
+}
+
 // ─── Send message ──────────────────────────────
 
 async function sendMessage(userText) {
@@ -431,7 +588,9 @@ async function sendMessage(userText) {
       .filter(m => m.type === 'text')
       .map(m => ({ role: m.role, content: m.content }));
 
-    const reply = await callGroq(history);
+    const reply = isReasoningMode
+      ? await callOpenAIReasoning(history)
+      : await callGroq(history);
 
     chat.messages.push({ role: 'assistant', content: reply, type: 'text' });
     chat.updatedAt = new Date().toISOString();
