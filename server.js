@@ -4,6 +4,54 @@ const mongoose  = require('mongoose');
 const cors      = require('cors');
 const rateLimit = require('express-rate-limit');
 const Chat      = require('./models/Chat');
+const Settings  = require('./models/Settings');
+
+// ─── Available models catalogue ────────────────
+
+const MODELS_CATALOGUE = {
+  reasoning: [
+    { name: 'GPT OSS 120B',  id: 'meta-llama/llama-4-maverick-17b-128e-instruct' },
+    { name: 'GPT OSS 20B',   id: 'meta-llama/llama-4-scout-17b-16e-instruct' },
+    { name: 'Qwen 3 32B',    id: 'qwen/qwen3-32b' },
+  ],
+  functionCalling: [
+    { name: 'GPT OSS 120B',  id: 'meta-llama/llama-4-maverick-17b-128e-instruct' },
+    { name: 'GPT OSS 20B',   id: 'meta-llama/llama-4-scout-17b-16e-instruct' },
+    { name: 'Llama 4 Scout', id: 'meta-llama/llama-4-scout-17b-16e-instruct' },
+    { name: 'Qwen 3 32B',    id: 'qwen/qwen3-32b' },
+    { name: 'Kimi K2',       id: 'moonshotai/kimi-k2-instruct' },
+  ],
+  textToSpeech: [
+    { name: 'ElevenLabs TTS',        id: 'elevenlabs/tts' },
+    { name: 'Orpheus English',       id: 'canopy/orpheus-3-3b-english-ft' },
+    { name: 'Orpheus Arabic Saudi',  id: 'canopy/orpheus-3-3b-arabic-sa-ft' },
+  ],
+  speechToText: [
+    { name: 'Whisper Large v3',       id: 'whisper-large-v3' },
+    { name: 'Whisper Large v3 Turbo', id: 'whisper-large-v3-turbo' },
+  ],
+  textToText: [
+    { name: 'GPT OSS 120B',  id: 'meta-llama/llama-4-maverick-17b-128e-instruct' },
+    { name: 'GPT OSS 20B',   id: 'meta-llama/llama-4-scout-17b-16e-instruct' },
+    { name: 'Kimi K2',       id: 'moonshotai/kimi-k2-instruct' },
+    { name: 'Llama 4 Scout', id: 'meta-llama/llama-4-scout-17b-16e-instruct' },
+    { name: 'Llama 3.3 70B', id: 'llama-3.3-70b-versatile' },
+  ],
+  vision: [
+    { name: 'Llama 4 Scout', id: 'meta-llama/llama-4-scout-17b-16e-instruct' },
+  ],
+  multilingual: [
+    { name: 'GPT OSS 120B',           id: 'meta-llama/llama-4-maverick-17b-128e-instruct' },
+    { name: 'GPT OSS 20B',            id: 'meta-llama/llama-4-scout-17b-16e-instruct' },
+    { name: 'Kimi K2',                id: 'moonshotai/kimi-k2-instruct' },
+    { name: 'Llama 4 Scout',          id: 'meta-llama/llama-4-scout-17b-16e-instruct' },
+    { name: 'Llama 3.3 70B',          id: 'llama-3.3-70b-versatile' },
+    { name: 'Whisper Large v3',       id: 'whisper-large-v3' },
+  ],
+  safety: [
+    { name: 'Safety GPT OSS 20B', id: 'meta-llama/llama-guard-4-12b' },
+  ],
+};
 
 const app = express();
 app.use(cors());
@@ -135,6 +183,71 @@ app.post('/api/chat', async (req, res) => {
     await chat.save();
 
     res.json({ chatId: chat._id, reply, title: chat.title });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ─── GET /api/models ────────────────────────────
+// Returns the available models grouped by capability
+
+app.get('/api/models', (_req, res) => {
+  res.json(MODELS_CATALOGUE);
+});
+
+// ─── GET /api/settings ──────────────────────────
+// Returns all stored settings (values are redacted for sensitive keys)
+
+app.get('/api/settings', async (_req, res) => {
+  try {
+    const settings = await Settings.find({}, 'key updatedAt').lean();
+    res.json(settings);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ─── GET /api/settings/:key ─────────────────────
+
+app.get('/api/settings/:key', async (req, res) => {
+  try {
+    const setting = await Settings.findOne({ key: req.params.key }).lean();
+    if (!setting) return res.status(404).json({ error: 'Setting not found' });
+    res.json({ key: setting.key, value: setting.value });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ─── POST /api/settings ─────────────────────────
+// Creates or updates a setting
+
+app.post('/api/settings', async (req, res) => {
+  const { key, value } = req.body;
+  if (!key || typeof key !== 'string' || !key.trim()) {
+    return res.status(400).json({ error: 'key is required' });
+  }
+  if (value === undefined || value === null) {
+    return res.status(400).json({ error: 'value is required' });
+  }
+  try {
+    await Settings.findOneAndUpdate(
+      { key: key.trim() },
+      { key: key.trim(), value: String(value) },
+      { upsert: true, new: true }
+    );
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ─── DELETE /api/settings/:key ──────────────────
+
+app.delete('/api/settings/:key', async (req, res) => {
+  try {
+    await Settings.findOneAndDelete({ key: req.params.key });
+    res.json({ success: true });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
