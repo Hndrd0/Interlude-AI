@@ -746,9 +746,43 @@ ttsBtn.addEventListener('click', toggleTTSMode);
 
 // ─── Groq TTS (Orpheus) ────────────────────────
 
+// Strip markdown syntax so TTS speaks plain prose, not raw markup characters.
+function stripMarkdownForTTS(text) {
+  return text
+    // Remove fenced code blocks (multi-line)
+    .replace(/```[\s\S]*?```/g, '')
+    // Remove inline code (allow spans across lines)
+    .replace(/`[^`]+`/g, '')
+    // Remove bold (*** or **) – non-greedy, multi-line safe
+    .replace(/\*{2,3}([\s\S]*?)\*{2,3}/g, '$1')
+    // Remove italic (* or _) – single delimiter, single-line
+    .replace(/\*([^*\n]+)\*/g, '$1')
+    .replace(/_([^_\n]+)_/g, '$1')
+    // Remove strikethrough
+    .replace(/~~([\s\S]*?)~~/g, '$1')
+    // Remove headings (# … ###)
+    .replace(/^#{1,6}\s+/gm, '')
+    // Remove blockquotes
+    .replace(/^>\s+/gm, '')
+    // Remove unordered list markers
+    .replace(/^[-*+]\s+/gm, '')
+    // Remove ordered list markers
+    .replace(/^\d+\.\s+/gm, '')
+    // Remove horizontal rules
+    .replace(/^-{3,}$/gm, '')
+    // Remove markdown links – keep label text
+    .replace(/\[([^\]]+)\]\([^)]+\)/g, '$1')
+    // Collapse excess blank lines
+    .replace(/\n{3,}/g, '\n\n')
+    .trim();
+}
+
 async function callGroqTTS(text) {
   const apiKey = localStorage.getItem(STORAGE_KEY_GROQ_KEY);
   if (!apiKey) return;
+
+  const plainText = stripMarkdownForTTS(text);
+  if (!plainText) return;
 
   try {
     const model        = localStorage.getItem(STORAGE_KEY_TTS_MODEL) || GROQ_TTS_MODEL;
@@ -760,7 +794,7 @@ async function callGroqTTS(text) {
         'Content-Type':  'application/json',
         'Authorization': `Bearer ${apiKey}`,
       },
-      body: JSON.stringify({ model, input: text, voice }),
+      body: JSON.stringify({ model, input: plainText, voice, response_format: 'wav' }),
     });
 
     if (!res.ok) {
@@ -769,11 +803,14 @@ async function callGroqTTS(text) {
       return;
     }
 
+    // Use the content-type from the response so the browser can decode the audio correctly.
+    // Groq's Orpheus models return WAV; ElevenLabs may return audio/mpeg.
+    const mimeType    = res.headers.get('content-type') || 'audio/wav';
     const audioBuffer = await res.arrayBuffer();
-    const audioBlob   = new Blob([audioBuffer], { type: 'audio/mpeg' });
+    const audioBlob   = new Blob([audioBuffer], { type: mimeType });
     const audioUrl    = URL.createObjectURL(audioBlob);
     const audio       = new Audio(audioUrl);
-    audio.play();
+    audio.play().catch(err => console.error('TTS playback error:', err.message));
     audio.addEventListener('ended', () => URL.revokeObjectURL(audioUrl));
   } catch (err) {
     console.error('TTS error:', err.message);
