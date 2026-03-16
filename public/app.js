@@ -15,7 +15,17 @@ const DEFAULT_MAX_TOKENS           = 1024;
 const DEFAULT_REASONING_MODEL      = 'deepseek-r1-distill-llama-70b';
 const DEFAULT_REASONING_MAX_TOKENS = 8192;
 const GROQ_API_URL                 = 'https://api.groq.com/openai/v1/chat/completions';
-const GROQ_WHISPER_URL        = 'https://api.groq.com/openai/v1/audio/transcriptions';
+const GROQ_WHISPER_URL             = 'https://api.groq.com/openai/v1/audio/transcriptions';
+
+// Maps old/deprecated Groq model aliases to their current API IDs.
+const MODEL_ID_ALIASES = {
+  'gpt-oss-20b':  'meta-llama/llama-4-scout-17b-16e-instruct',
+  'gpt-oss-120b': 'meta-llama/llama-4-maverick-17b-128e-instruct',
+};
+
+function resolveModelId(id) {
+  return MODEL_ID_ALIASES[id] || id;
+}
 
 // ─── DOM references ────────────────────────────
 
@@ -598,7 +608,7 @@ async function callGroq(messages) {
   if (!apiKey) {
     throw new Error('Groq API key not configured. Open ⚙ Settings to add your API key.');
   }
-  const model        = localStorage.getItem(STORAGE_KEY_GROQ_MODEL) || DEFAULT_GROQ_MODEL;
+  const model        = resolveModelId(localStorage.getItem(STORAGE_KEY_GROQ_MODEL) || DEFAULT_GROQ_MODEL);
   const systemPrompt = localStorage.getItem(STORAGE_KEY_SYSTEM_PROMPT) || DEFAULT_SYSTEM_PROMPT;
 
   const groqMessages = [{ role: 'system', content: systemPrompt }, ...messages];
@@ -628,7 +638,7 @@ async function callGroqReasoning(messages) {
   if (!apiKey) {
     throw new Error('Groq API key not configured for Reasoning mode. Open ⚙ Settings to add your Groq API key.');
   }
-  const model        = localStorage.getItem(STORAGE_KEY_REASONING_MODEL) || DEFAULT_REASONING_MODEL;
+  const model        = resolveModelId(localStorage.getItem(STORAGE_KEY_REASONING_MODEL) || DEFAULT_REASONING_MODEL);
   const systemPrompt = localStorage.getItem(STORAGE_KEY_SYSTEM_PROMPT) || DEFAULT_SYSTEM_PROMPT;
 
   const reasoningMessages = [{ role: 'system', content: systemPrompt }, ...messages];
