@@ -1161,3 +1161,174 @@ details[open] > .reasoning-block__toggle::before {
     justify-content: center;
   }
 }
+
+/* ─── Image preview (inside chat form) ──────── */
+.image-preview-area {
+  padding: 0.4rem 0.25rem 0;
+}
+
+.image-preview-wrapper {
+  position: relative;
+  display: inline-block;
+}
+
+.image-preview__img {
+  width: 80px;
+  height: 80px;
+  object-fit: cover;
+  border-radius: 6px;
+  border: 1px solid var(--color-border);
+  display: block;
+}
+
+.image-preview__remove {
+  position: absolute;
+  top: -6px;
+  right: -6px;
+  width: 18px;
+  height: 18px;
+  background: var(--color-error);
+  color: #fff;
+  border: none;
+  border-radius: 50%;
+  cursor: pointer;
+  font-size: 0.85rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  line-height: 1;
+  transition: filter 0.15s;
+}
+
+.image-preview__remove:hover {
+  filter: brightness(1.2);
+}
+
+/* ─── Image attachment menu ──────────────────── */
+.image-btn-wrapper {
+  position: relative;
+}
+
+.image-menu {
+  position: absolute;
+  bottom: calc(100% + 6px);
+  left: 0;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  padding: 0.3rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  min-width: 152px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.35);
+  z-index: 50;
+  animation: slideUp 0.15s ease;
+}
+
+.image-menu[hidden] {
+  display: none;
+}
+
+.image-menu__item {
+  background: none;
+  border: none;
+  padding: 0.4rem 0.65rem;
+  text-align: left;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.83rem;
+  color: var(--color-text);
+  font-family: var(--font);
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  transition: background 0.15s;
+}
+
+.image-menu__item:hover {
+  background: var(--color-surface-2);
+}
+
+/* ─── Attached image in user message ─────────── */
+.message__attached-image {
+  max-width: 200px;
+  max-height: 200px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--color-border);
+  display: block;
+  margin-bottom: 0.35rem;
+}
+
+/* ─── Camera modal ───────────────────────────── */
+.camera-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.8);
+  z-index: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.camera-modal-overlay[hidden] {
+  display: none;
+}
+
+.camera-modal__box {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  padding: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  max-width: 90vw;
+  max-height: 90vh;
+  animation: slideUp 0.2s ease;
+}
+
+.camera-modal__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.camera-modal__title {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--color-text);
+}
+
+.camera-modal__close {
+  background: none;
+  border: none;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  padding: 0.25rem;
+  border-radius: var(--radius-sm);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: color 0.2s, background 0.2s;
+}
+
+.camera-modal__close:hover {
+  color: var(--color-text);
+  background: var(--color-surface-2);
+}
+
+.camera-modal__video {
+  width: 100%;
+  max-width: 480px;
+  border-radius: var(--radius-sm);
+  background: #000;
+  display: block;
+}
+
+.camera-modal__actions {
+  display: flex;
+  gap: 0.5rem;
+  justify-content: center;
+}

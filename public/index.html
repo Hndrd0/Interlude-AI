@@ -125,6 +125,32 @@
           </div>
         </div>
 
+        <!-- Text-to-Speech (ElevenLabs via Groq) -->
+        <div class="settings-section">
+          <p class="settings-section__title">Text-to-Speech <span class="settings-optional">(Groq)</span></p>
+          <p class="settings-info">Text-to-speech uses ElevenLabs TTS via the Groq API key configured above. Toggle the <strong>Speak</strong> button in the chat toolbar to enable auto-playback.</p>
+          <div class="settings-field">
+            <label class="settings-label" for="tts-voice-input">Voice <span class="settings-optional">(default: aria)</span></label>
+            <input type="text" id="tts-voice-input" class="settings-input" placeholder="aria" list="tts-voice-suggestions" autocomplete="off" />
+            <datalist id="tts-voice-suggestions">
+              <option value="aria">Aria (default)</option>
+              <option value="roger">Roger</option>
+              <option value="sarah">Sarah</option>
+              <option value="charlie">Charlie</option>
+              <option value="george">George</option>
+              <option value="callum">Callum</option>
+              <option value="river">River</option>
+              <option value="liam">Liam</option>
+              <option value="charlotte">Charlotte</option>
+              <option value="alice">Alice</option>
+              <option value="matilda">Matilda</option>
+              <option value="jessica">Jessica</option>
+              <option value="brian">Brian</option>
+              <option value="lily">Lily</option>
+            </datalist>
+          </div>
+        </div>
+
         <!-- Available Models -->
         <div class="settings-section">
           <p class="settings-section__title">Available Models</p>
@@ -284,6 +310,13 @@
 
     <div class="input-area">
       <form id="chat-form" class="chat-form" autocomplete="off">
+        <!-- Image preview (shown when an image is attached) -->
+        <div id="image-preview-area" class="image-preview-area" hidden>
+          <div class="image-preview-wrapper">
+            <img id="image-preview" class="image-preview__img" alt="Attached image" />
+            <button type="button" id="remove-image-btn" class="image-preview__remove" aria-label="Remove image">×</button>
+          </div>
+        </div>
         <textarea
           id="message-input"
           class="chat-form__input"
@@ -305,6 +338,30 @@
               </svg>
               <span class="btn--mode__label">Reasoning</span>
             </button>
+            <button type="button" id="tts-btn" class="btn btn--mode" aria-label="Toggle text-to-speech" aria-pressed="false" title="Text-to-speech (ElevenLabs via Groq)">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width="14" height="14">
+                <path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z"/>
+              </svg>
+              <span class="btn--mode__label">Speak</span>
+            </button>
+            <div class="image-btn-wrapper">
+              <button type="button" id="image-btn" class="btn btn--mode" aria-label="Add image" aria-haspopup="true" aria-expanded="false" title="Add a photo or use camera">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width="14" height="14">
+                  <path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/>
+                </svg>
+                <span class="btn--mode__label">Image</span>
+              </button>
+              <div id="image-menu" class="image-menu" hidden role="menu">
+                <button type="button" id="upload-photo-btn" class="image-menu__item" role="menuitem">
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width="14" height="14"><path d="M21 19V5c0-1.1-.9-2-2-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2zM8.5 13.5l2.5 3.01L14.5 12l4.5 6H5l3.5-4.5z"/></svg>
+                  Upload Photo
+                </button>
+                <button type="button" id="use-camera-btn" class="image-menu__item" role="menuitem">
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width="14" height="14"><path d="M12 15.2A3.2 3.2 0 0 0 15.2 12 3.2 3.2 0 0 0 12 8.8 3.2 3.2 0 0 0 8.8 12a3.2 3.2 0 0 0 3.2 3.2zm-1-14H9L7 3H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V5a2 2 0 0 0-2-2h-3L15 1h-4zm1 15a5 5 0 1 1 0-10 5 5 0 0 1 0 10z"/></svg>
+                  Use Camera
+                </button>
+              </div>
+            </div>
           </div>
           <button type="submit" id="send-btn" class="btn btn--send" aria-label="Send message">
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width="18" height="18">
@@ -316,6 +373,33 @@
       <p class="input-area__hint" id="input-hint">Press <kbd>Enter</kbd> to send · <kbd>Shift+Enter</kbd> for new line</p>
     </div>
   </main>
+
+  <!-- Hidden file inputs for image attachment -->
+  <input type="file" id="image-upload-input" accept="image/*" style="display:none" aria-hidden="true" />
+  <input type="file" id="camera-capture-input" accept="image/*" capture="environment" style="display:none" aria-hidden="true" />
+
+  <!-- Camera Modal -->
+  <div id="camera-modal" class="camera-modal-overlay" hidden aria-modal="true" role="dialog" aria-label="Camera">
+    <div class="camera-modal__box">
+      <div class="camera-modal__header">
+        <span class="camera-modal__title">Take a Photo</span>
+        <button type="button" id="camera-close-btn" class="camera-modal__close" aria-label="Close camera">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width="18" height="18">
+            <path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/>
+          </svg>
+        </button>
+      </div>
+      <video id="camera-video" class="camera-modal__video" autoplay playsinline muted></video>
+      <canvas id="camera-canvas" hidden></canvas>
+      <div class="camera-modal__actions">
+        <button type="button" id="capture-photo-btn" class="btn btn--primary">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width="16" height="16"><path d="M12 15.2A3.2 3.2 0 0 0 15.2 12 3.2 3.2 0 0 0 12 8.8 3.2 3.2 0 0 0 8.8 12a3.2 3.2 0 0 0 3.2 3.2zm-1-14H9L7 3H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V5a2 2 0 0 0-2-2h-3L15 1h-4zm1 15a5 5 0 1 1 0-10 5 5 0 0 1 0 10z"/></svg>
+          Capture
+        </button>
+        <button type="button" id="camera-cancel-btn" class="btn btn--mode">Cancel</button>
+      </div>
+    </div>
+  </div>
 
   <script src="app.js"></script>
 </body>
