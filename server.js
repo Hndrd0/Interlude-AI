@@ -22,9 +22,9 @@ const MODELS_CATALOGUE = {
     { name: 'Kimi K2',       id: 'moonshotai/kimi-k2-instruct' },
   ],
   textToSpeech: [
-    { name: 'ElevenLabs TTS',        id: 'elevenlabs/tts' },
-    { name: 'Orpheus English',       id: 'canopy/orpheus-3-3b-english-ft' },
-    { name: 'Orpheus Arabic Saudi',  id: 'canopy/orpheus-3-3b-arabic-sa-ft' },
+    { name: 'Orpheus English (default)', id: 'canopylabs/orpheus-v1-english' },
+    { name: 'ElevenLabs TTS',            id: 'elevenlabs/tts' },
+    { name: 'Orpheus Arabic Saudi',      id: 'canopy/orpheus-3-3b-arabic-sa-ft' },
   ],
   speechToText: [
     { name: 'Whisper Large v3',       id: 'whisper-large-v3' },
