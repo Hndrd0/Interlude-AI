@@ -8,6 +8,7 @@ const STORAGE_KEY_MONGO_KEY     = 'interlude_ai_mongo_key';
 const STORAGE_KEY_MONGO_DB      = 'interlude_ai_mongo_db';
 const STORAGE_KEY_MONGO_DS      = 'interlude_ai_mongo_datasource';
 const STORAGE_KEY_REASONING_MODEL = 'interlude_ai_reasoning_model';
+const STORAGE_KEY_TTS_VOICE     = 'interlude_ai_tts_voice';
 
 const DEFAULT_GROQ_MODEL           = 'llama-3.1-8b-instant';
 const DEFAULT_SYSTEM_PROMPT        = 'You are Interlude AI, a helpful and knowledgeable assistant.';
@@ -16,6 +17,14 @@ const DEFAULT_REASONING_MODEL      = 'deepseek-r1-distill-llama-70b';
 const DEFAULT_REASONING_MAX_TOKENS = 8192;
 const GROQ_API_URL                 = 'https://api.groq.com/openai/v1/chat/completions';
 const GROQ_WHISPER_URL             = 'https://api.groq.com/openai/v1/audio/transcriptions';
+const GROQ_TTS_URL                 = 'https://api.groq.com/openai/v1/audio/speech';
+const GROQ_TTS_MODEL               = 'elevenlabs/tts';
+const DEFAULT_TTS_VOICE            = 'aria';
+const VISION_MODEL                 = 'meta-llama/llama-4-scout-17b-16e-instruct';
+const DEFAULT_IMAGE_PROMPT         = 'What do you see in this image?';
+const CAMERA_JPEG_QUALITY          = 0.85;
+const DEFAULT_CAMERA_WIDTH         = 640;
+const DEFAULT_CAMERA_HEIGHT        = 480;
 
 // Maps old/deprecated Groq model aliases to their current API IDs.
 const MODEL_ID_ALIASES = {
@@ -52,10 +61,27 @@ const mongoKeyInput     = document.getElementById('mongo-key-input');
 const mongoDbInput      = document.getElementById('mongo-db-input');
 const mongoDsInput      = document.getElementById('mongo-ds-input');
 const reasoningModelInput = document.getElementById('reasoning-model-input');
+const ttsVoiceInput     = document.getElementById('tts-voice-input');
 const saveSettingsBtn   = document.getElementById('save-settings-btn');
 
 const micBtn       = document.getElementById('mic-btn');
 const reasoningBtn = document.getElementById('reasoning-btn');
+const ttsBtn       = document.getElementById('tts-btn');
+const imageBtn     = document.getElementById('image-btn');
+const imageMenu    = document.getElementById('image-menu');
+const uploadPhotoBtn    = document.getElementById('upload-photo-btn');
+const useCameraBtn      = document.getElementById('use-camera-btn');
+const imageUploadInput  = document.getElementById('image-upload-input');
+const cameraCaptureInput = document.getElementById('camera-capture-input');
+const imagePreviewArea  = document.getElementById('image-preview-area');
+const imagePreviewEl    = document.getElementById('image-preview');
+const removeImageBtn    = document.getElementById('remove-image-btn');
+const cameraModal       = document.getElementById('camera-modal');
+const cameraVideo       = document.getElementById('camera-video');
+const cameraCanvas      = document.getElementById('camera-canvas');
+const capturePhotoBtn   = document.getElementById('capture-photo-btn');
+const cameraCancelBtn   = document.getElementById('camera-cancel-btn');
+const cameraCloseBtn    = document.getElementById('camera-close-btn');
 
 let currentChatId = null;
 
@@ -94,6 +120,7 @@ async function openSettings() {
   mongoKeyInput.value       = localStorage.getItem(STORAGE_KEY_MONGO_KEY)         || '';
   mongoDbInput.value        = localStorage.getItem(STORAGE_KEY_MONGO_DB)          || '';
   mongoDsInput.value        = localStorage.getItem(STORAGE_KEY_MONGO_DS)          || '';
+  ttsVoiceInput.value       = localStorage.getItem(STORAGE_KEY_TTS_VOICE)         || '';
   settingsOverlay.classList.add('is-open');
   settingsOverlay.setAttribute('aria-hidden', 'false');
 }
@@ -119,6 +146,7 @@ async function saveSettings() {
   set(STORAGE_KEY_MONGO_DB,        mongoDbInput.value.trim());
   set(STORAGE_KEY_MONGO_DS,        mongoDsInput.value.trim());
   set(STORAGE_KEY_REASONING_MODEL, rsnModel);
+  set(STORAGE_KEY_TTS_VOICE,       ttsVoiceInput.value.trim());
 
   // Persist sensitive settings to MongoDB (server-side) for security
   await Promise.all([
@@ -339,7 +367,7 @@ function renderMarkdown(raw) {
 
 // ─── Messages ──────────────────────────────────
 
-function createMessageElement(role, text, thinking = null) {
+function createMessageElement(role, text, thinking = null, imageDataUrl = null) {
   const wrapper = document.createElement('div');
   wrapper.className = `message message--${role === 'user' ? 'user' : 'ai'}`;
 
@@ -351,7 +379,18 @@ function createMessageElement(role, text, thinking = null) {
   bubble.className = 'message__bubble';
 
   if (role === 'user') {
-    bubble.textContent = text;
+    if (imageDataUrl) {
+      const img = document.createElement('img');
+      img.src       = imageDataUrl;
+      img.className = 'message__attached-image';
+      img.alt       = 'Attached image';
+      bubble.appendChild(img);
+    }
+    if (text) {
+      const textDiv = document.createElement('div');
+      textDiv.textContent = text;
+      bubble.appendChild(textDiv);
+    }
   } else {
     bubble.classList.add('md-content');
 
@@ -379,11 +418,11 @@ function createMessageElement(role, text, thinking = null) {
   return wrapper;
 }
 
-function appendMessage(role, text, thinking = null) {
+function appendMessage(role, text, thinking = null, imageDataUrl = null) {
   const emptyState = chatWindow.querySelector('.empty-state');
   if (emptyState) emptyState.remove();
 
-  const el = createMessageElement(role, text, thinking);
+  const el = createMessageElement(role, text, thinking, imageDataUrl);
   chatWindow.appendChild(el);
   chatWindow.scrollTop = chatWindow.scrollHeight;
   return el;
@@ -689,6 +728,206 @@ function toggleReasoningMode() {
 
 reasoningBtn.addEventListener('click', toggleReasoningMode);
 
+// ─── TTS mode ──────────────────────────────────
+
+let isTTSMode = false;
+
+function toggleTTSMode() {
+  isTTSMode = !isTTSMode;
+  ttsBtn.classList.toggle('is-active', isTTSMode);
+  ttsBtn.setAttribute('aria-pressed', String(isTTSMode));
+}
+
+ttsBtn.addEventListener('click', toggleTTSMode);
+
+// ─── Groq TTS (ElevenLabs) ─────────────────────
+
+async function callGroqTTS(text) {
+  const apiKey = localStorage.getItem(STORAGE_KEY_GROQ_KEY);
+  if (!apiKey) return;
+
+  try {
+    const voice = localStorage.getItem(STORAGE_KEY_TTS_VOICE) || DEFAULT_TTS_VOICE;
+    const res = await fetch(GROQ_TTS_URL, {
+      method: 'POST',
+      headers: {
+        'Content-Type':  'application/json',
+        'Authorization': `Bearer ${apiKey}`,
+      },
+      body: JSON.stringify({ model: GROQ_TTS_MODEL, input: text, voice }),
+    });
+
+    if (!res.ok) {
+      const errData = await res.json().catch(() => ({}));
+      console.error('TTS error:', errData.error?.message || `TTS error (${res.status})`);
+      return;
+    }
+
+    const audioBuffer = await res.arrayBuffer();
+    const audioBlob   = new Blob([audioBuffer], { type: 'audio/mpeg' });
+    const audioUrl    = URL.createObjectURL(audioBlob);
+    const audio       = new Audio(audioUrl);
+    audio.play();
+    audio.addEventListener('ended', () => URL.revokeObjectURL(audioUrl));
+  } catch (err) {
+    console.error('TTS error:', err.message);
+  }
+}
+
+// ─── Groq Vision API (Llama 4 Scout) ───────────
+
+async function callGroqVision(messages, imageDataUrl) {
+  const apiKey = localStorage.getItem(STORAGE_KEY_GROQ_KEY);
+  if (!apiKey) {
+    throw new Error('Groq API key not configured. Open ⚙ Settings to add your API key.');
+  }
+  const systemPrompt = localStorage.getItem(STORAGE_KEY_SYSTEM_PROMPT) || DEFAULT_SYSTEM_PROMPT;
+
+  // Build the vision messages array.
+  // All prior messages are plain text; the current (last) user message includes the image.
+  const visionMessages = [{ role: 'system', content: systemPrompt }];
+  const prevMessages   = messages.slice(0, -1);
+  prevMessages.forEach(m => visionMessages.push({ role: m.role, content: m.content }));
+
+  const lastMsg = messages[messages.length - 1];
+  visionMessages.push({
+    role: 'user',
+    content: [
+      { type: 'text',      text: lastMsg.content },
+      { type: 'image_url', image_url: { url: imageDataUrl } },
+    ],
+  });
+
+  const res = await fetch(GROQ_API_URL, {
+    method:  'POST',
+    headers: {
+      'Content-Type':  'application/json',
+      'Authorization': `Bearer ${apiKey}`,
+    },
+    body: JSON.stringify({ model: VISION_MODEL, messages: visionMessages, max_tokens: DEFAULT_MAX_TOKENS }),
+  });
+
+  if (!res.ok) {
+    const errData = await res.json().catch(() => ({}));
+    throw new Error(errData.error?.message || `Groq API error (${res.status})`);
+  }
+
+  const data = await res.json();
+  return data.choices?.[0]?.message?.content ?? 'No response received.';
+}
+
+// ─── Image attachment ──────────────────────────
+
+let pendingImage = null; // { dataUrl: string, mimeType: string } | null
+
+function setPendingImage(dataUrl, mimeType) {
+  pendingImage            = { dataUrl, mimeType };
+  imagePreviewEl.src      = dataUrl;
+  imagePreviewArea.removeAttribute('hidden');
+}
+
+function clearPendingImage() {
+  pendingImage = null;
+  imagePreviewEl.src = '';
+  imagePreviewArea.setAttribute('hidden', '');
+}
+
+removeImageBtn.addEventListener('click', clearPendingImage);
+
+// Toggle the image attachment dropdown menu
+imageBtn.addEventListener('click', (e) => {
+  e.stopPropagation();
+  const isHidden = imageMenu.hasAttribute('hidden');
+  if (isHidden) {
+    imageMenu.removeAttribute('hidden');
+    imageBtn.setAttribute('aria-expanded', 'true');
+  } else {
+    imageMenu.setAttribute('hidden', '');
+    imageBtn.setAttribute('aria-expanded', 'false');
+  }
+});
+
+// Close menu when clicking outside
+document.addEventListener('click', () => {
+  if (!imageMenu.hasAttribute('hidden')) {
+    imageMenu.setAttribute('hidden', '');
+    imageBtn.setAttribute('aria-expanded', 'false');
+  }
+});
+
+// ── Upload Photo ───────────────────────────────
+
+uploadPhotoBtn.addEventListener('click', () => {
+  imageMenu.setAttribute('hidden', '');
+  imageBtn.setAttribute('aria-expanded', 'false');
+  imageUploadInput.click();
+});
+
+imageUploadInput.addEventListener('change', () => {
+  const file = imageUploadInput.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = (e) => setPendingImage(e.target.result, file.type || 'image/jpeg');
+  reader.readAsDataURL(file);
+  imageUploadInput.value = '';
+});
+
+// ── Camera ─────────────────────────────────────
+
+let cameraStream = null;
+
+useCameraBtn.addEventListener('click', async () => {
+  imageMenu.setAttribute('hidden', '');
+  imageBtn.setAttribute('aria-expanded', 'false');
+
+  if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+    // Fallback: use native file capture on devices that don't support getUserMedia
+    cameraCaptureInput.click();
+    return;
+  }
+
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' }, audio: false });
+    cameraStream         = stream;
+    cameraVideo.srcObject = stream;
+    cameraModal.removeAttribute('hidden');
+  } catch {
+    // Camera permission denied or unavailable — fall back to file input with capture
+    cameraCaptureInput.click();
+  }
+});
+
+cameraCaptureInput.addEventListener('change', () => {
+  const file = cameraCaptureInput.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = (e) => setPendingImage(e.target.result, file.type || 'image/jpeg');
+  reader.readAsDataURL(file);
+  cameraCaptureInput.value = '';
+});
+
+function closeCamera() {
+  if (cameraStream) {
+    cameraStream.getTracks().forEach(t => t.stop());
+    cameraStream = null;
+  }
+  cameraVideo.srcObject = null;
+  cameraModal.setAttribute('hidden', '');
+}
+
+capturePhotoBtn.addEventListener('click', () => {
+  if (!cameraStream) return;
+  cameraCanvas.width  = cameraVideo.videoWidth  || DEFAULT_CAMERA_WIDTH;
+  cameraCanvas.height = cameraVideo.videoHeight || DEFAULT_CAMERA_HEIGHT;
+  cameraCanvas.getContext('2d').drawImage(cameraVideo, 0, 0);
+  const dataUrl = cameraCanvas.toDataURL('image/jpeg', CAMERA_JPEG_QUALITY);
+  setPendingImage(dataUrl, 'image/jpeg');
+  closeCamera();
+});
+
+cameraCancelBtn.addEventListener('click', closeCamera);
+cameraCloseBtn.addEventListener('click', closeCamera);
+
 // ─── Microphone / Speech-to-Text ───────────────
 
 let mediaRecorder  = null;
@@ -792,8 +1031,8 @@ async function processAudioTranscription(audioBlob) {
 
 // ─── Send message ──────────────────────────────
 
-async function sendMessage(userText) {
-  appendMessage('user', userText);
+async function sendMessage(userText, image = null) {
+  appendMessage('user', userText, null, image?.dataUrl ?? null);
   setInputEnabled(false);
   showTypingIndicator();
 
@@ -816,12 +1055,16 @@ async function sendMessage(userText) {
       .map(m => ({ role: m.role, content: m.content }));
 
     let reply = null, thinking = null;
-    if (isReasoningMode) {
+    if (image) {
+      // Vision: use Llama 4 Scout to analyse the attached image
+      reply    = await callGroqVision(history, image.dataUrl);
+      thinking = null;
+    } else if (isReasoningMode) {
       const result = await callGroqReasoning(history);
-      reply   = result.content;
+      reply    = result.content;
       thinking = result.thinking;
     } else {
-      reply   = await callGroq(history);
+      reply    = await callGroq(history);
       thinking = null;
     }
 
@@ -832,6 +1075,12 @@ async function sendMessage(userText) {
 
     hideTypingIndicator();
     appendMessage('assistant', reply, thinking);
+
+    // Auto-play TTS when Speak mode is active
+    if (isTTSMode) {
+      callGroqTTS(reply);
+    }
+
     await loadChats();
     renderActiveChatInList(currentChatId);
   } catch (err) {
@@ -847,11 +1096,13 @@ async function sendMessage(userText) {
 
 chatForm.addEventListener('submit', (e) => {
   e.preventDefault();
-  const text = messageInput.value.trim();
-  if (!text) return;
+  const text  = messageInput.value.trim();
+  const image = pendingImage;
+  if (!text && !image) return;
   messageInput.value = '';
   autoResizeTextarea();
-  sendMessage(text);
+  clearPendingImage();
+  sendMessage(text || DEFAULT_IMAGE_PROMPT, image);
 });
 
 messageInput.addEventListener('keydown', (e) => {
