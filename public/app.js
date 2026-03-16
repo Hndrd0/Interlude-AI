@@ -9,11 +9,12 @@ const STORAGE_KEY_MONGO_DB      = 'interlude_ai_mongo_db';
 const STORAGE_KEY_MONGO_DS      = 'interlude_ai_mongo_datasource';
 const STORAGE_KEY_REASONING_MODEL = 'interlude_ai_reasoning_model';
 
-const DEFAULT_GROQ_MODEL      = 'llama-3.1-8b-instant';
-const DEFAULT_SYSTEM_PROMPT   = 'You are Interlude AI, a helpful and knowledgeable assistant.';
-const DEFAULT_MAX_TOKENS      = 1024;
-const DEFAULT_REASONING_MODEL = 'gpt-oss-120b';
-const GROQ_API_URL            = 'https://api.groq.com/openai/v1/chat/completions';
+const DEFAULT_GROQ_MODEL           = 'llama-3.1-8b-instant';
+const DEFAULT_SYSTEM_PROMPT        = 'You are Interlude AI, a helpful and knowledgeable assistant.';
+const DEFAULT_MAX_TOKENS           = 1024;
+const DEFAULT_REASONING_MODEL      = 'deepseek-r1-distill-llama-70b';
+const DEFAULT_REASONING_MAX_TOKENS = 8192;
+const GROQ_API_URL                 = 'https://api.groq.com/openai/v1/chat/completions';
 const GROQ_WHISPER_URL        = 'https://api.groq.com/openai/v1/audio/transcriptions';
 
 // ─── DOM references ────────────────────────────
@@ -104,7 +105,19 @@ settingsOverlay.addEventListener('click', (e) => {
   if (e.target === settingsOverlay) closeSettings();
 });
 document.addEventListener('keydown', (e) => {
-  if (e.key === 'Escape') closeSettings();
+  if (e.key === 'Escape') {
+    closeSettings();
+    return;
+  }
+  // Auto-focus the message input when the user starts typing anywhere on the page
+  if (settingsOverlay.classList.contains('is-open')) return;
+  const activeTag = document.activeElement?.tagName?.toUpperCase();
+  if (activeTag === 'INPUT' || activeTag === 'TEXTAREA') return;
+  if (e.ctrlKey || e.altKey || e.metaKey) return;
+  if (messageInput.disabled) return;
+  if (e.key.length === 1) {
+    messageInput.focus();
+  }
 });
 
 // ─── New Chat ──────────────────────────────────
@@ -433,7 +446,7 @@ async function callGroqReasoning(messages) {
       'Content-Type':  'application/json',
       'Authorization': `Bearer ${apiKey}`,
     },
-    body: JSON.stringify({ model, messages: reasoningMessages, max_tokens: DEFAULT_MAX_TOKENS }),
+    body: JSON.stringify({ model, messages: reasoningMessages, max_tokens: DEFAULT_REASONING_MAX_TOKENS }),
   });
 
   if (!res.ok) {
