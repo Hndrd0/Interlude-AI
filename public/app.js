@@ -8,19 +8,14 @@ const STORAGE_KEY_MONGO_KEY     = 'interlude_ai_mongo_key';
 const STORAGE_KEY_MONGO_DB      = 'interlude_ai_mongo_db';
 const STORAGE_KEY_MONGO_DS      = 'interlude_ai_mongo_datasource';
 const STORAGE_KEY_REASONING_MODEL = 'interlude_ai_reasoning_model';
-const STORAGE_KEY_TTS_VOICE     = 'interlude_ai_tts_voice';
-const STORAGE_KEY_TTS_MODEL     = 'interlude_ai_tts_model';
 
 const DEFAULT_GROQ_MODEL           = 'llama-3.1-8b-instant';
 const DEFAULT_SYSTEM_PROMPT        = 'You are Interlude AI, a helpful and knowledgeable assistant.';
 const DEFAULT_MAX_TOKENS           = 1024;
-const DEFAULT_REASONING_MODEL      = 'deepseek-r1-distill-llama-70b';
+const DEFAULT_REASONING_MODEL      = 'moonshotai/kimi-k2-instruct-0905';
 const DEFAULT_REASONING_MAX_TOKENS = 8192;
 const GROQ_API_URL                 = 'https://api.groq.com/openai/v1/chat/completions';
 const GROQ_WHISPER_URL             = 'https://api.groq.com/openai/v1/audio/transcriptions';
-const GROQ_TTS_URL                 = 'https://api.groq.com/openai/v1/audio/speech';
-const GROQ_TTS_MODEL               = 'canopylabs/orpheus-v1-english';
-const DEFAULT_TTS_VOICE            = 'tara';
 const VISION_MODEL                 = 'meta-llama/llama-4-scout-17b-16e-instruct';
 const DEFAULT_IMAGE_PROMPT         = 'What do you see in this image?';
 const CAMERA_JPEG_QUALITY          = 0.85;
@@ -62,13 +57,10 @@ const mongoKeyInput     = document.getElementById('mongo-key-input');
 const mongoDbInput      = document.getElementById('mongo-db-input');
 const mongoDsInput      = document.getElementById('mongo-ds-input');
 const reasoningModelInput = document.getElementById('reasoning-model-input');
-const ttsVoiceInput     = document.getElementById('tts-voice-input');
-const ttsModelInput     = document.getElementById('tts-model-input');
 const saveSettingsBtn   = document.getElementById('save-settings-btn');
 
 const micBtn       = document.getElementById('mic-btn');
 const reasoningBtn = document.getElementById('reasoning-btn');
-const ttsBtn       = document.getElementById('tts-btn');
 const imageBtn     = document.getElementById('image-btn');
 const imageMenu    = document.getElementById('image-menu');
 const uploadPhotoBtn    = document.getElementById('upload-photo-btn');
@@ -122,8 +114,6 @@ async function openSettings() {
   mongoKeyInput.value       = localStorage.getItem(STORAGE_KEY_MONGO_KEY)         || '';
   mongoDbInput.value        = localStorage.getItem(STORAGE_KEY_MONGO_DB)          || '';
   mongoDsInput.value        = localStorage.getItem(STORAGE_KEY_MONGO_DS)          || '';
-  ttsVoiceInput.value       = localStorage.getItem(STORAGE_KEY_TTS_VOICE)         || '';
-  ttsModelInput.value       = localStorage.getItem(STORAGE_KEY_TTS_MODEL)         || '';
   settingsOverlay.classList.add('is-open');
   settingsOverlay.setAttribute('aria-hidden', 'false');
 }
@@ -149,8 +139,6 @@ async function saveSettings() {
   set(STORAGE_KEY_MONGO_DB,        mongoDbInput.value.trim());
   set(STORAGE_KEY_MONGO_DS,        mongoDsInput.value.trim());
   set(STORAGE_KEY_REASONING_MODEL, rsnModel);
-  set(STORAGE_KEY_TTS_VOICE,       ttsVoiceInput.value.trim());
-  set(STORAGE_KEY_TTS_MODEL,       ttsModelInput.value.trim());
 
   // Persist sensitive settings to MongoDB (server-side) for security
   await Promise.all([
@@ -295,7 +283,9 @@ function renderMarkdown(raw) {
   const inlineCodes = [];
   t = t.replace(/```(\w*)\n([\s\S]*?)```/g, (_m, lang, code) => {
     const langAttr = lang ? ` class="language-${lang}"` : '';
-    codeBlocks.push(`<pre class="md-pre"><code${langAttr}>${code.trimEnd()}</code></pre>`);
+    const langLabel = lang ? lang : '';
+    const copyBtn = `<button class="code-copy-btn" aria-label="Copy code" title="Copy code"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width="13" height="13"><path d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/></svg><span>Copy</span></button>`;
+    codeBlocks.push(`<div class="code-block-wrapper"><div class="code-block-header">${langLabel ? `<span class="code-lang">${langLabel}</span>` : ''}${copyBtn}</div><pre class="md-pre"><code${langAttr}>${code.trimEnd()}</code></pre></div>`);
     return `\x00cb${codeBlocks.length - 1}\x00`;
   });
   t = t.replace(/`([^`\n]+)`/g, (_m, code) => {
@@ -415,6 +405,35 @@ function createMessageElement(role, text, thinking = null, imageDataUrl = null) 
     const answerDiv = document.createElement('div');
     answerDiv.innerHTML = renderMarkdown(text);
     bubble.appendChild(answerDiv);
+
+    // Wire up code-block copy buttons
+    answerDiv.querySelectorAll('.code-copy-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const code = btn.closest('.code-block-wrapper')?.querySelector('code');
+        if (!code) return;
+        navigator.clipboard.writeText(code.textContent).then(() => {
+          btn.querySelector('span').textContent = 'Copied!';
+          setTimeout(() => { btn.querySelector('span').textContent = 'Copy'; }, 1500);
+        }).catch(() => {});
+      });
+    });
+
+    // Message-level copy button (below the answer)
+    const actionsBar = document.createElement('div');
+    actionsBar.className = 'message__actions';
+    const copyBtn = document.createElement('button');
+    copyBtn.className = 'msg-action-btn';
+    copyBtn.setAttribute('aria-label', 'Copy answer');
+    copyBtn.title = 'Copy answer';
+    copyBtn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width="14" height="14"><path d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/></svg><span>Copy</span>`;
+    copyBtn.addEventListener('click', () => {
+      navigator.clipboard.writeText(text).then(() => {
+        copyBtn.querySelector('span').textContent = 'Copied!';
+        setTimeout(() => { copyBtn.querySelector('span').textContent = 'Copy'; }, 1500);
+      }).catch(() => {});
+    });
+    actionsBar.appendChild(copyBtn);
+    bubble.appendChild(actionsBar);
   }
 
   wrapper.appendChild(avatar);
@@ -442,7 +461,7 @@ function showTypingIndicator() {
   avatar.textContent = 'AI';
 
   const indicator = document.createElement('div');
-  indicator.className = 'message__bubble typing-indicator';
+  indicator.className = 'typing-indicator';
   indicator.innerHTML = '<span></span><span></span><span></span>';
 
   wrapper.appendChild(avatar);
@@ -720,7 +739,7 @@ async function callGroqReasoning(messages) {
   return { thinking, content };
 }
 
-// ─── Reasoning mode ────────────────────────────
+// ─── Reasoning (Research) mode ─────────────────
 
 let isReasoningMode = false;
 
@@ -731,91 +750,6 @@ function toggleReasoningMode() {
 }
 
 reasoningBtn.addEventListener('click', toggleReasoningMode);
-
-// ─── TTS mode ──────────────────────────────────
-
-let isTTSMode = false;
-
-function toggleTTSMode() {
-  isTTSMode = !isTTSMode;
-  ttsBtn.classList.toggle('is-active', isTTSMode);
-  ttsBtn.setAttribute('aria-pressed', String(isTTSMode));
-}
-
-ttsBtn.addEventListener('click', toggleTTSMode);
-
-// ─── Groq TTS (Orpheus) ────────────────────────
-
-// Strip markdown syntax so TTS speaks plain prose, not raw markup characters.
-function stripMarkdownForTTS(text) {
-  return text
-    // Remove fenced code blocks (multi-line)
-    .replace(/```[\s\S]*?```/g, '')
-    // Remove inline code (allow spans across lines)
-    .replace(/`[^`]+`/g, '')
-    // Remove bold (*** or **) – non-greedy, multi-line safe
-    .replace(/\*{2,3}([\s\S]*?)\*{2,3}/g, '$1')
-    // Remove italic (* or _) – single delimiter, single-line
-    .replace(/\*([^*\n]+)\*/g, '$1')
-    .replace(/_([^_\n]+)_/g, '$1')
-    // Remove strikethrough
-    .replace(/~~([\s\S]*?)~~/g, '$1')
-    // Remove headings (# … ###)
-    .replace(/^#{1,6}\s+/gm, '')
-    // Remove blockquotes
-    .replace(/^>\s+/gm, '')
-    // Remove unordered list markers
-    .replace(/^[-*+]\s+/gm, '')
-    // Remove ordered list markers
-    .replace(/^\d+\.\s+/gm, '')
-    // Remove horizontal rules
-    .replace(/^-{3,}$/gm, '')
-    // Remove markdown links – keep label text
-    .replace(/\[([^\]]+)\]\([^)]+\)/g, '$1')
-    // Collapse excess blank lines
-    .replace(/\n{3,}/g, '\n\n')
-    .trim();
-}
-
-async function callGroqTTS(text) {
-  const apiKey = localStorage.getItem(STORAGE_KEY_GROQ_KEY);
-  if (!apiKey) return;
-
-  const plainText = stripMarkdownForTTS(text);
-  if (!plainText) return;
-
-  try {
-    const model        = localStorage.getItem(STORAGE_KEY_TTS_MODEL) || GROQ_TTS_MODEL;
-    const defaultVoice = model === 'elevenlabs/tts' ? 'aria' : 'tara';
-    const voice        = localStorage.getItem(STORAGE_KEY_TTS_VOICE) || defaultVoice;
-    const res = await fetch(GROQ_TTS_URL, {
-      method: 'POST',
-      headers: {
-        'Content-Type':  'application/json',
-        'Authorization': `Bearer ${apiKey}`,
-      },
-      body: JSON.stringify({ model, input: plainText, voice, response_format: 'wav' }),
-    });
-
-    if (!res.ok) {
-      const errData = await res.json().catch(() => ({}));
-      console.error('TTS error:', errData.error?.message || `TTS error (${res.status})`);
-      return;
-    }
-
-    // Use the content-type from the response so the browser can decode the audio correctly.
-    // Groq's Orpheus models return WAV; ElevenLabs may return audio/mpeg.
-    const mimeType    = res.headers.get('content-type') || 'audio/wav';
-    const audioBuffer = await res.arrayBuffer();
-    const audioBlob   = new Blob([audioBuffer], { type: mimeType });
-    const audioUrl    = URL.createObjectURL(audioBlob);
-    const audio       = new Audio(audioUrl);
-    audio.play().catch(err => console.error('TTS playback error:', err.message));
-    audio.addEventListener('ended', () => URL.revokeObjectURL(audioUrl));
-  } catch (err) {
-    console.error('TTS error:', err.message);
-  }
-}
 
 // ─── Groq Vision API (Llama 4 Scout) ───────────
 
@@ -1118,11 +1052,6 @@ async function sendMessage(userText, image = null) {
 
     hideTypingIndicator();
     appendMessage('assistant', reply, thinking);
-
-    // Auto-play TTS when Speak mode is active
-    if (isTTSMode) {
-      callGroqTTS(reply);
-    }
 
     await loadChats();
     renderActiveChatInList(currentChatId);

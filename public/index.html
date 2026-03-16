@@ -109,60 +109,19 @@
           </div>
         </div>
 
-        <!-- Reasoning (Groq) -->
+        <!-- Research (Groq / Kimi K2) -->
         <div class="settings-section">
-          <p class="settings-section__title">Reasoning <span class="settings-optional">(Groq)</span></p>
-          <p class="settings-info">Reasoning mode uses the Groq API with the model below. Uses the same Groq API key configured above.</p>
+          <p class="settings-section__title">Research <span class="settings-optional">(Kimi K2)</span></p>
+          <p class="settings-info">Research mode uses the Groq API with the model below. Uses the same Groq API key configured above.</p>
           <div class="settings-field">
-            <label class="settings-label" for="reasoning-model-input">Reasoning Model <span class="settings-optional">(default: deepseek-r1-distill-llama-70b)</span></label>
-            <input type="text" id="reasoning-model-input" class="settings-input" placeholder="deepseek-r1-distill-llama-70b" list="reasoning-model-suggestions" autocomplete="off" />
+            <label class="settings-label" for="reasoning-model-input">Research Model <span class="settings-optional">(default: moonshotai/kimi-k2-instruct-0905)</span></label>
+            <input type="text" id="reasoning-model-input" class="settings-input" placeholder="moonshotai/kimi-k2-instruct-0905" list="reasoning-model-suggestions" autocomplete="off" />
             <datalist id="reasoning-model-suggestions">
-              <option value="deepseek-r1-distill-llama-70b">DeepSeek R1 70B (default)</option>
+              <option value="moonshotai/kimi-k2-instruct-0905">Kimi K2 (default)</option>
+              <option value="moonshotai/kimi-k2-instruct">Kimi K2 (latest)</option>
+              <option value="deepseek-r1-distill-llama-70b">DeepSeek R1 70B</option>
               <option value="meta-llama/llama-4-maverick-17b-128e-instruct">GPT OSS 120B</option>
-              <option value="meta-llama/llama-4-scout-17b-16e-instruct">GPT OSS 20B</option>
               <option value="qwen/qwen3-32b">Qwen 3 32B</option>
-            </datalist>
-          </div>
-        </div>
-
-        <!-- Text-to-Speech (Orpheus via Groq) -->
-        <div class="settings-section">
-          <p class="settings-section__title">Text-to-Speech <span class="settings-optional">(Groq)</span></p>
-          <p class="settings-info">Text-to-speech uses the Groq API key configured above. Toggle the <strong>Speak</strong> button in the chat toolbar to enable auto-playback.</p>
-          <div class="settings-field">
-            <label class="settings-label" for="tts-model-input">TTS Model <span class="settings-optional">(default: Orpheus English)</span></label>
-            <select id="tts-model-input" class="settings-input">
-              <option value="canopylabs/orpheus-v1-english">Orpheus English (default)</option>
-              <option value="elevenlabs/tts">ElevenLabs TTS</option>
-              <option value="canopy/orpheus-3-3b-arabic-sa-ft">Orpheus Arabic Saudi</option>
-            </select>
-          </div>
-          <div class="settings-field">
-            <label class="settings-label" for="tts-voice-input">Voice <span class="settings-optional">(default: tara for Orpheus · aria for ElevenLabs)</span></label>
-            <input type="text" id="tts-voice-input" class="settings-input" placeholder="tara" list="tts-voice-suggestions" autocomplete="off" />
-            <datalist id="tts-voice-suggestions">
-              <option value="tara">Tara – Orpheus (default)</option>
-              <option value="leah">Leah – Orpheus</option>
-              <option value="jess">Jess – Orpheus</option>
-              <option value="leo">Leo – Orpheus</option>
-              <option value="dan">Dan – Orpheus</option>
-              <option value="mia">Mia – Orpheus</option>
-              <option value="zac">Zac – Orpheus</option>
-              <option value="zoe">Zoe – Orpheus</option>
-              <option value="aria">Aria – ElevenLabs</option>
-              <option value="roger">Roger – ElevenLabs</option>
-              <option value="sarah">Sarah – ElevenLabs</option>
-              <option value="charlie">Charlie – ElevenLabs</option>
-              <option value="george">George – ElevenLabs</option>
-              <option value="callum">Callum – ElevenLabs</option>
-              <option value="river">River – ElevenLabs</option>
-              <option value="liam">Liam – ElevenLabs</option>
-              <option value="charlotte">Charlotte – ElevenLabs</option>
-              <option value="alice">Alice – ElevenLabs</option>
-              <option value="matilda">Matilda – ElevenLabs</option>
-              <option value="jessica">Jessica – ElevenLabs</option>
-              <option value="brian">Brian – ElevenLabs</option>
-              <option value="lily">Lily – ElevenLabs</option>
             </datalist>
           </div>
         </div>
@@ -175,10 +134,11 @@
             <div class="models-category">
               <button type="button" class="models-category__toggle" aria-expanded="false">
                 <span class="models-category__icon">🧠</span>
-                <span class="models-category__name">Reasoning</span>
+                <span class="models-category__name">Research</span>
                 <span class="models-category__chevron">▸</span>
               </button>
               <div class="models-category__list" hidden>
+                <button type="button" class="model-pill" data-model-id="moonshotai/kimi-k2-instruct-0905">Kimi K2</button>
                 <button type="button" class="model-pill" data-model-id="meta-llama/llama-4-maverick-17b-128e-instruct">GPT OSS 120B</button>
                 <button type="button" class="model-pill" data-model-id="meta-llama/llama-4-scout-17b-16e-instruct">GPT OSS 20B</button>
                 <button type="button" class="model-pill" data-model-id="qwen/qwen3-32b">Qwen 3 32B</button>
@@ -196,18 +156,6 @@
                 <button type="button" class="model-pill" data-model-id="meta-llama/llama-4-scout-17b-16e-instruct">Llama 4 Scout</button>
                 <button type="button" class="model-pill" data-model-id="qwen/qwen3-32b">Qwen 3 32B</button>
                 <button type="button" class="model-pill" data-model-id="moonshotai/kimi-k2-instruct">Kimi K2</button>
-              </div>
-            </div>
-            <div class="models-category">
-              <button type="button" class="models-category__toggle" aria-expanded="false">
-                <span class="models-category__icon">🔊</span>
-                <span class="models-category__name">Text to Speech</span>
-                <span class="models-category__chevron">▸</span>
-              </button>
-              <div class="models-category__list" hidden>
-                <button type="button" class="model-pill" data-model-id="elevenlabs/tts">ElevenLabs TTS</button>
-                <button type="button" class="model-pill" data-model-id="canopy/orpheus-3-3b-english-ft">Orpheus English</button>
-                <button type="button" class="model-pill" data-model-id="canopy/orpheus-3-3b-arabic-sa-ft">Orpheus Arabic Saudi</button>
               </div>
             </div>
             <div class="models-category">
@@ -348,17 +296,11 @@
               </svg>
               <span class="btn--mode__label">Dictate</span>
             </button>
-            <button type="button" id="reasoning-btn" class="btn btn--mode" aria-label="Toggle reasoning mode" aria-pressed="false" title="Reasoning mode (Groq)">
+            <button type="button" id="reasoning-btn" class="btn btn--mode" aria-label="Toggle research mode" aria-pressed="false" title="Research mode (Kimi K2)">
               <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width="14" height="14">
                 <path d="M9 21c0 .55.45 1 1 1h4c.55 0 1-.45 1-1v-1H9v1zm3-19C8.14 2 5 5.14 5 9c0 2.38 1.19 4.47 3 5.74V17c0 .55.45 1 1 1h6c.55 0 1-.45 1-1v-2.26c1.81-1.27 3-3.36 3-5.74 0-3.86-3.14-7-7-7z"/>
               </svg>
-              <span class="btn--mode__label">Reasoning</span>
-            </button>
-            <button type="button" id="tts-btn" class="btn btn--mode" aria-label="Toggle text-to-speech" aria-pressed="false" title="Text-to-speech (ElevenLabs TTS or Orpheus via Groq)">
-              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width="14" height="14">
-                <path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z"/>
-              </svg>
-              <span class="btn--mode__label">Speak</span>
+              <span class="btn--mode__label">Research</span>
             </button>
             <div class="image-btn-wrapper">
               <button type="button" id="image-btn" class="btn btn--mode" aria-label="Add image" aria-haspopup="true" aria-expanded="false" title="Add a photo or use camera">
