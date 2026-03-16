@@ -329,7 +329,7 @@ function renderMarkdown(raw) {
 
 // ─── Messages ──────────────────────────────────
 
-function createMessageElement(role, text) {
+function createMessageElement(role, text, thinking = null) {
   const wrapper = document.createElement('div');
   wrapper.className = `message message--${role === 'user' ? 'user' : 'ai'}`;
 
@@ -344,7 +344,24 @@ function createMessageElement(role, text) {
     bubble.textContent = text;
   } else {
     bubble.classList.add('md-content');
-    bubble.innerHTML = renderMarkdown(text);
+
+    if (thinking) {
+      const details = document.createElement('details');
+      details.className = 'reasoning-block';
+      const summary = document.createElement('summary');
+      summary.className = 'reasoning-block__toggle';
+      summary.textContent = 'Reasoning';
+      const reasoningContent = document.createElement('div');
+      reasoningContent.className = 'reasoning-block__content md-content';
+      reasoningContent.innerHTML = renderMarkdown(thinking);
+      details.appendChild(summary);
+      details.appendChild(reasoningContent);
+      bubble.appendChild(details);
+    }
+
+    const answerDiv = document.createElement('div');
+    answerDiv.innerHTML = renderMarkdown(text);
+    bubble.appendChild(answerDiv);
   }
 
   wrapper.appendChild(avatar);
@@ -352,11 +369,11 @@ function createMessageElement(role, text) {
   return wrapper;
 }
 
-function appendMessage(role, text) {
+function appendMessage(role, text, thinking = null) {
   const emptyState = chatWindow.querySelector('.empty-state');
   if (emptyState) emptyState.remove();
 
-  const el = createMessageElement(role, text);
+  const el = createMessageElement(role, text, thinking);
   chatWindow.appendChild(el);
   chatWindow.scrollTop = chatWindow.scrollHeight;
   return el;
@@ -630,8 +647,24 @@ async function callGroqReasoning(messages) {
     throw new Error(errData.error?.message || `Groq API error (${res.status})`);
   }
 
-  const data = await res.json();
-  return data.choices?.[0]?.message?.content ?? 'No response received.';
+  const data   = await res.json();
+  const choice = data.choices?.[0];
+  const raw    = choice?.message?.content ?? 'No response received.';
+
+  // Groq exposes reasoning in a dedicated field for some models; fall back to
+  // parsing <think>…</think> blocks that DeepSeek-style models embed in content.
+  let thinking = choice?.message?.reasoning_content ?? null;
+  let content  = raw;
+
+  if (!thinking) {
+    const thinkMatch = raw.match(/<think>([\s\S]*?)<\/think>\s*/);
+    if (thinkMatch) {
+      thinking = thinkMatch[1].trim();
+      content  = raw.replace(thinkMatch[0], '').trim() || 'No response received.';
+    }
+  }
+
+  return { thinking, content };
 }
 
 // ─── Reasoning mode ────────────────────────────
@@ -772,9 +805,15 @@ async function sendMessage(userText) {
       .filter(m => m.type === 'text')
       .map(m => ({ role: m.role, content: m.content }));
 
-    const reply = isReasoningMode
-      ? await callGroqReasoning(history)
-      : await callGroq(history);
+    let reply = null, thinking = null;
+    if (isReasoningMode) {
+      const result = await callGroqReasoning(history);
+      reply   = result.content;
+      thinking = result.thinking;
+    } else {
+      reply   = await callGroq(history);
+      thinking = null;
+    }
 
     chat.messages.push({ role: 'assistant', content: reply, type: 'text' });
     chat.updatedAt = new Date().toISOString();
@@ -782,7 +821,7 @@ async function sendMessage(userText) {
     currentChatId = chat._id;
 
     hideTypingIndicator();
-    appendMessage('assistant', reply);
+    appendMessage('assistant', reply, thinking);
     await loadChats();
     renderActiveChatInList(currentChatId);
   } catch (err) {
