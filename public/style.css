@@ -1130,6 +1130,7 @@ details[open] > .reasoning-block__toggle::before {
     left: 0;
     top: 0;
     transform: translateX(-100%);
+    width: min(var(--sidebar-width), 85vw);
   }
 
   .sidebar.is-open {
@@ -1149,26 +1150,74 @@ details[open] > .reasoning-block__toggle::before {
     display: flex;
   }
 
+  .topbar {
+    padding: 0 1rem;
+    gap: 0.5rem;
+  }
+
   .chat-window {
-    padding: 1rem 1rem 0.5rem;
+    padding: 0.75rem 0.75rem 0.5rem;
+    gap: 0.75rem;
   }
 
   .input-area {
-    padding: 0.5rem 1rem 0.75rem;
+    padding: 0.4rem 0.75rem 0.6rem;
   }
 
   .message {
-    max-width: 92%;
+    max-width: 94%;
   }
 
+  .message__bubble {
+    padding: 0.6rem 0.85rem;
+    font-size: 0.9rem;
+  }
+
+  /* Show short icon-only label with larger touch targets */
   .btn--mode__label {
     display: none;
   }
 
   .btn--mode {
-    width: 28px;
-    padding: 0.3rem;
+    /* 40 × 40 px minimum touch target */
+    width: 40px;
+    height: 40px;
+    padding: 0;
     justify-content: center;
+    flex-shrink: 0;
+  }
+
+  .btn--mode svg {
+    width: 16px;
+    height: 16px;
+  }
+
+  .btn--send {
+    width: 40px;
+    height: 40px;
+  }
+
+  .chat-form {
+    padding: 0.5rem 0.5rem 0.4rem;
+  }
+
+  .chat-form__actions {
+    padding-top: 0.35rem;
+  }
+
+  .chat-form__modes {
+    gap: 0.25rem;
+  }
+
+  .input-area__hint {
+    display: none;
+  }
+
+  /* Settings modal takes more screen space on mobile */
+  .settings-modal {
+    max-height: 92vh;
+    margin: 0.5rem;
+    border-radius: var(--radius-sm);
   }
 }
 
