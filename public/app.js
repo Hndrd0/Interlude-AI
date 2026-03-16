@@ -7,16 +7,14 @@ const STORAGE_KEY_MONGO_URL     = 'interlude_ai_mongo_url';
 const STORAGE_KEY_MONGO_KEY     = 'interlude_ai_mongo_key';
 const STORAGE_KEY_MONGO_DB      = 'interlude_ai_mongo_db';
 const STORAGE_KEY_MONGO_DS      = 'interlude_ai_mongo_datasource';
-const STORAGE_KEY_OPENAI_KEY    = 'interlude_ai_openai_key';
 const STORAGE_KEY_REASONING_MODEL = 'interlude_ai_reasoning_model';
 
 const DEFAULT_GROQ_MODEL      = 'llama-3.1-8b-instant';
 const DEFAULT_SYSTEM_PROMPT   = 'You are Interlude AI, a helpful and knowledgeable assistant.';
 const DEFAULT_MAX_TOKENS      = 1024;
-const DEFAULT_REASONING_MODEL = 'o3-mini';
+const DEFAULT_REASONING_MODEL = 'gpt-oss-120b';
 const GROQ_API_URL            = 'https://api.groq.com/openai/v1/chat/completions';
 const GROQ_WHISPER_URL        = 'https://api.groq.com/openai/v1/audio/transcriptions';
-const OPENAI_API_URL          = 'https://api.openai.com/v1/chat/completions';
 
 // ─── DOM references ────────────────────────────
 
@@ -42,7 +40,6 @@ const mongoUrlInput     = document.getElementById('mongo-url-input');
 const mongoKeyInput     = document.getElementById('mongo-key-input');
 const mongoDbInput      = document.getElementById('mongo-db-input');
 const mongoDsInput      = document.getElementById('mongo-ds-input');
-const openaiKeyInput    = document.getElementById('openai-key-input');
 const reasoningModelInput = document.getElementById('reasoning-model-input');
 const saveSettingsBtn   = document.getElementById('save-settings-btn');
 
@@ -77,7 +74,6 @@ function openSettings() {
   mongoKeyInput.value       = localStorage.getItem(STORAGE_KEY_MONGO_KEY)         || '';
   mongoDbInput.value        = localStorage.getItem(STORAGE_KEY_MONGO_DB)          || '';
   mongoDsInput.value        = localStorage.getItem(STORAGE_KEY_MONGO_DS)          || '';
-  openaiKeyInput.value      = localStorage.getItem(STORAGE_KEY_OPENAI_KEY)        || '';
   reasoningModelInput.value = localStorage.getItem(STORAGE_KEY_REASONING_MODEL)   || '';
   settingsOverlay.classList.add('is-open');
   settingsOverlay.setAttribute('aria-hidden', 'false');
@@ -97,7 +93,6 @@ function saveSettings() {
   set(STORAGE_KEY_MONGO_KEY,       mongoKeyInput.value.trim());
   set(STORAGE_KEY_MONGO_DB,        mongoDbInput.value.trim());
   set(STORAGE_KEY_MONGO_DS,        mongoDsInput.value.trim());
-  set(STORAGE_KEY_OPENAI_KEY,      openaiKeyInput.value.trim());
   set(STORAGE_KEY_REASONING_MODEL, reasoningModelInput.value.trim());
   closeSettings();
 }
@@ -420,30 +415,30 @@ async function callGroq(messages) {
   return data.choices?.[0]?.message?.content ?? 'No response received.';
 }
 
-// ─── OpenAI Reasoning API ──────────────────────
+// ─── Groq Reasoning API ────────────────────────
 
-async function callOpenAIReasoning(messages) {
-  const apiKey = localStorage.getItem(STORAGE_KEY_OPENAI_KEY);
+async function callGroqReasoning(messages) {
+  const apiKey = localStorage.getItem(STORAGE_KEY_GROQ_KEY);
   if (!apiKey) {
-    throw new Error('OpenAI API key not configured for Reasoning mode. Open ⚙ Settings to add your OpenAI API key.');
+    throw new Error('Groq API key not configured for Reasoning mode. Open ⚙ Settings to add your Groq API key.');
   }
   const model        = localStorage.getItem(STORAGE_KEY_REASONING_MODEL) || DEFAULT_REASONING_MODEL;
   const systemPrompt = localStorage.getItem(STORAGE_KEY_SYSTEM_PROMPT) || DEFAULT_SYSTEM_PROMPT;
 
-  const openaiMessages = [{ role: 'system', content: systemPrompt }, ...messages];
+  const reasoningMessages = [{ role: 'system', content: systemPrompt }, ...messages];
 
-  const res = await fetch(OPENAI_API_URL, {
+  const res = await fetch(GROQ_API_URL, {
     method:  'POST',
     headers: {
       'Content-Type':  'application/json',
       'Authorization': `Bearer ${apiKey}`,
     },
-    body: JSON.stringify({ model, messages: openaiMessages }),
+    body: JSON.stringify({ model, messages: reasoningMessages, max_tokens: DEFAULT_MAX_TOKENS }),
   });
 
   if (!res.ok) {
     const errData = await res.json().catch(() => ({}));
-    throw new Error(errData.error?.message || `OpenAI API error (${res.status})`);
+    throw new Error(errData.error?.message || `Groq API error (${res.status})`);
   }
 
   const data = await res.json();
@@ -589,7 +584,7 @@ async function sendMessage(userText) {
       .map(m => ({ role: m.role, content: m.content }));
 
     const reply = isReasoningMode
-      ? await callOpenAIReasoning(history)
+      ? await callGroqReasoning(history)
       : await callGroq(history);
 
     chat.messages.push({ role: 'assistant', content: reply, type: 'text' });

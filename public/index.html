@@ -99,17 +99,13 @@
           </div>
         </div>
 
-        <!-- OpenAI -->
+        <!-- Reasoning (Groq) -->
         <div class="settings-section">
-          <p class="settings-section__title">OpenAI <span class="settings-optional">(Reasoning mode)</span></p>
-          <p class="settings-info">Required for Reasoning mode. Calls the OpenAI API using the model below.</p>
+          <p class="settings-section__title">Reasoning <span class="settings-optional">(Groq)</span></p>
+          <p class="settings-info">Reasoning mode uses the Groq API with the model below. Uses the same Groq API key configured above.</p>
           <div class="settings-field">
-            <label class="settings-label" for="openai-key-input">API Key</label>
-            <input type="password" id="openai-key-input" class="settings-input" placeholder="sk-…" autocomplete="off" />
-          </div>
-          <div class="settings-field">
-            <label class="settings-label" for="reasoning-model-input">Reasoning Model <span class="settings-optional">(default: o3-mini)</span></label>
-            <input type="text" id="reasoning-model-input" class="settings-input" placeholder="o3-mini" />
+            <label class="settings-label" for="reasoning-model-input">Reasoning Model <span class="settings-optional">(default: gpt-oss-120b)</span></label>
+            <input type="text" id="reasoning-model-input" class="settings-input" placeholder="gpt-oss-120b" />
           </div>
         </div>
 
@@ -180,7 +176,7 @@
               </svg>
               <span class="btn--mode__label">Dictate</span>
             </button>
-            <button type="button" id="reasoning-btn" class="btn btn--mode" aria-label="Toggle reasoning mode" aria-pressed="false" title="Reasoning mode (OpenAI)">
+            <button type="button" id="reasoning-btn" class="btn btn--mode" aria-label="Toggle reasoning mode" aria-pressed="false" title="Reasoning mode (Groq)">
               <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width="14" height="14">
                 <path d="M9 21c0 .55.45 1 1 1h4c.55 0 1-.45 1-1v-1H9v1zm3-19C8.14 2 5 5.14 5 9c0 2.38 1.19 4.47 3 5.74V17c0 .55.45 1 1 1h6c.55 0 1-.45 1-1v-2.26c1.81-1.27 3-3.36 3-5.74 0-3.86-3.14-7-7-7z"/>
               </svg>
