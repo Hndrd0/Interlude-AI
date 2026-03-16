@@ -67,15 +67,23 @@ sidebarOverlay.addEventListener('click', closeSidebar);
 
 // ─── Settings modal ─────────────────────────────
 
-function openSettings() {
-  groqKeyInput.value        = localStorage.getItem(STORAGE_KEY_GROQ_KEY)          || '';
-  groqModelInput.value      = localStorage.getItem(STORAGE_KEY_GROQ_MODEL)        || '';
-  systemPromptInput.value   = localStorage.getItem(STORAGE_KEY_SYSTEM_PROMPT)     || '';
+async function openSettings() {
+  // Prefer server-stored values (MongoDB), fall back to localStorage
+  const [srvKey, srvModel, srvPrompt, srvReasoning] = await Promise.all([
+    serverSettingsLoad(SETTINGS_KEYS.groqKey),
+    serverSettingsLoad(SETTINGS_KEYS.groqModel),
+    serverSettingsLoad(SETTINGS_KEYS.systemPrompt),
+    serverSettingsLoad(SETTINGS_KEYS.reasoningModel),
+  ]);
+
+  groqKeyInput.value        = srvKey       ?? localStorage.getItem(STORAGE_KEY_GROQ_KEY)          ?? '';
+  groqModelInput.value      = srvModel     ?? localStorage.getItem(STORAGE_KEY_GROQ_MODEL)        ?? '';
+  systemPromptInput.value   = srvPrompt    ?? localStorage.getItem(STORAGE_KEY_SYSTEM_PROMPT)     ?? '';
+  reasoningModelInput.value = srvReasoning ?? localStorage.getItem(STORAGE_KEY_REASONING_MODEL)   ?? '';
   mongoUrlInput.value       = localStorage.getItem(STORAGE_KEY_MONGO_URL)         || '';
   mongoKeyInput.value       = localStorage.getItem(STORAGE_KEY_MONGO_KEY)         || '';
   mongoDbInput.value        = localStorage.getItem(STORAGE_KEY_MONGO_DB)          || '';
   mongoDsInput.value        = localStorage.getItem(STORAGE_KEY_MONGO_DS)          || '';
-  reasoningModelInput.value = localStorage.getItem(STORAGE_KEY_REASONING_MODEL)   || '';
   settingsOverlay.classList.add('is-open');
   settingsOverlay.setAttribute('aria-hidden', 'false');
 }
@@ -85,16 +93,31 @@ function closeSettings() {
   settingsOverlay.setAttribute('aria-hidden', 'true');
 }
 
-function saveSettings() {
+async function saveSettings() {
   const set = (key, val) => val ? localStorage.setItem(key, val) : localStorage.removeItem(key);
-  set(STORAGE_KEY_GROQ_KEY,        groqKeyInput.value.trim());
-  set(STORAGE_KEY_GROQ_MODEL,      groqModelInput.value.trim());
-  set(STORAGE_KEY_SYSTEM_PROMPT,   systemPromptInput.value.trim());
+  const groqKey    = groqKeyInput.value.trim();
+  const groqModel  = groqModelInput.value.trim();
+  const sysPrompt  = systemPromptInput.value.trim();
+  const rsnModel   = reasoningModelInput.value.trim();
+
+  // Save to localStorage (fast, always available)
+  set(STORAGE_KEY_GROQ_KEY,        groqKey);
+  set(STORAGE_KEY_GROQ_MODEL,      groqModel);
+  set(STORAGE_KEY_SYSTEM_PROMPT,   sysPrompt);
   set(STORAGE_KEY_MONGO_URL,       mongoUrlInput.value.trim());
   set(STORAGE_KEY_MONGO_KEY,       mongoKeyInput.value.trim());
   set(STORAGE_KEY_MONGO_DB,        mongoDbInput.value.trim());
   set(STORAGE_KEY_MONGO_DS,        mongoDsInput.value.trim());
-  set(STORAGE_KEY_REASONING_MODEL, reasoningModelInput.value.trim());
+  set(STORAGE_KEY_REASONING_MODEL, rsnModel);
+
+  // Persist sensitive settings to MongoDB (server-side) for security
+  await Promise.all([
+    groqKey   ? serverSettingsSave(SETTINGS_KEYS.groqKey,        groqKey)   : Promise.resolve(),
+    groqModel ? serverSettingsSave(SETTINGS_KEYS.groqModel,      groqModel) : Promise.resolve(),
+    sysPrompt ? serverSettingsSave(SETTINGS_KEYS.systemPrompt,   sysPrompt) : Promise.resolve(),
+    rsnModel  ? serverSettingsSave(SETTINGS_KEYS.reasoningModel, rsnModel)  : Promise.resolve(),
+  ]);
+
   closeSettings();
 }
 
@@ -118,6 +141,64 @@ document.addEventListener('keydown', (e) => {
   if (e.key.length === 1) {
     messageInput.focus();
   }
+});
+
+// ─── Server settings sync ───────────────────────
+// Persists settings to MongoDB via the backend API (falls back gracefully).
+
+const SETTINGS_KEYS = {
+  groqKey:        'groq_api_key',
+  groqModel:      'groq_model',
+  systemPrompt:   'system_prompt',
+  reasoningModel: 'reasoning_model',
+};
+
+async function serverSettingsSave(key, value) {
+  try {
+    await fetch('/api/settings', {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body:    JSON.stringify({ key, value }),
+    });
+  } catch {
+    // Server unavailable; localStorage is the fallback
+  }
+}
+
+async function serverSettingsLoad(key) {
+  try {
+    const res = await fetch(`/api/settings/${encodeURIComponent(key)}`);
+    if (!res.ok) return null;
+    const data = await res.json();
+    return data.value ?? null;
+  } catch {
+    return null;
+  }
+}
+
+// ─── Models catalogue ───────────────────────────
+// Wire up collapsible category rows and "click to use" model pills.
+
+document.querySelectorAll('.models-category__toggle').forEach(toggle => {
+  toggle.addEventListener('click', () => {
+    const list     = toggle.nextElementSibling;
+    const expanded = toggle.getAttribute('aria-expanded') === 'true';
+    toggle.setAttribute('aria-expanded', String(!expanded));
+    toggle.querySelector('.models-category__chevron').textContent = expanded ? '▸' : '▾';
+    if (expanded) list.setAttribute('hidden', '');
+    else          list.removeAttribute('hidden');
+  });
+});
+
+document.querySelectorAll('.model-pill').forEach(pill => {
+  pill.addEventListener('click', () => {
+    const modelId = pill.dataset.modelId;
+    groqModelInput.value = modelId;
+    // Flash the input to confirm the selection
+    groqModelInput.classList.add('settings-input--flash');
+    setTimeout(() => groqModelInput.classList.remove('settings-input--flash'), 600);
+    groqModelInput.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  });
 });
 
 // ─── New Chat ──────────────────────────────────
@@ -157,6 +238,95 @@ function renderEmptyState() {
     </div>`;
 }
 
+// ─── Markdown renderer ─────────────────────────
+// Safely converts markdown to HTML (HTML-escapes first, then applies formatting).
+
+function renderMarkdown(raw) {
+  // 1. Escape HTML to prevent XSS
+  let t = raw
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;');
+
+  // 2. Protect code blocks with placeholders
+  const codeBlocks  = [];
+  const inlineCodes = [];
+  t = t.replace(/```(\w*)\n([\s\S]*?)```/g, (_m, lang, code) => {
+    const langAttr = lang ? ` class="language-${lang}"` : '';
+    codeBlocks.push(`<pre class="md-pre"><code${langAttr}>${code.trimEnd()}</code></pre>`);
+    return `\x00cb${codeBlocks.length - 1}\x00`;
+  });
+  t = t.replace(/`([^`\n]+)`/g, (_m, code) => {
+    inlineCodes.push(`<code class="md-code">${code}</code>`);
+    return `\x00ic${inlineCodes.length - 1}\x00`;
+  });
+
+  // 3. Inline formatting (bold must come before italic to avoid conflicts)
+  t = t.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+  t = t.replace(/__(.+?)__/g, '<strong>$1</strong>');
+  t = t.replace(/\*([^*\n]+)\*/g, '<em>$1</em>');
+  t = t.replace(/_([^_\n]+)_/g, '<em>$1</em>');
+  t = t.replace(/~~(.+?)~~/g, '<del>$1</del>');
+  t = t.replace(/\[([^\]]+)\]\(([^)]+)\)/g,
+    '<a href="$2" target="_blank" rel="noopener noreferrer" class="md-link">$1</a>');
+
+  // 4. Line-by-line block processing
+  const lines    = t.split('\n');
+  const out      = [];
+  let inUl       = false;
+  let inOl       = false;
+  let paraLines  = [];
+
+  const flushPara = () => {
+    if (!paraLines.length) return;
+    out.push(`<p class="md-p">${paraLines.join('<br>')}</p>`);
+    paraLines = [];
+  };
+  const closeUl = () => { if (inUl) { out.push('</ul>'); inUl = false; } };
+  const closeOl = () => { if (inOl) { out.push('</ol>'); inOl = false; } };
+
+  for (const line of lines) {
+    if (!line.trim()) {
+      flushPara(); closeUl(); closeOl();
+      continue;
+    }
+    if (/\x00cb\d+\x00/.test(line)) {
+      flushPara(); closeUl(); closeOl();
+      out.push(line);
+      continue;
+    }
+    if (/^---+$/.test(line)) {
+      flushPara(); closeUl(); closeOl();
+      out.push('<hr class="md-hr">');
+      continue;
+    }
+    const h3 = line.match(/^### (.+)/);
+    if (h3) { flushPara(); closeUl(); closeOl(); out.push(`<h3 class="md-h3">${h3[1]}</h3>`); continue; }
+    const h2 = line.match(/^## (.+)/);
+    if (h2) { flushPara(); closeUl(); closeOl(); out.push(`<h2 class="md-h2">${h2[1]}</h2>`); continue; }
+    const h1 = line.match(/^# (.+)/);
+    if (h1) { flushPara(); closeUl(); closeOl(); out.push(`<h1 class="md-h1">${h1[1]}</h1>`); continue; }
+    const bq = line.match(/^&gt; (.+)/);
+    if (bq) { flushPara(); closeUl(); closeOl(); out.push(`<blockquote class="md-blockquote">${bq[1]}</blockquote>`); continue; }
+    const ul = line.match(/^[-*] (.+)/);
+    if (ul) { flushPara(); closeOl(); if (!inUl) { out.push('<ul class="md-ul">'); inUl = true; } out.push(`<li>${ul[1]}</li>`); continue; }
+    const ol = line.match(/^\d+\. (.+)/);
+    if (ol) { flushPara(); closeUl(); if (!inOl) { out.push('<ol class="md-ol">'); inOl = true; } out.push(`<li>${ol[1]}</li>`); continue; }
+
+    closeUl(); closeOl();
+    paraLines.push(line);
+  }
+  flushPara(); closeUl(); closeOl();
+
+  t = out.join('\n');
+
+  // 5. Restore placeholders
+  t = t.replace(/\x00cb(\d+)\x00/g,  (_, i) => codeBlocks[+i]);
+  t = t.replace(/\x00ic(\d+)\x00/g,  (_, i) => inlineCodes[+i]);
+
+  return t;
+}
+
 // ─── Messages ──────────────────────────────────
 
 function createMessageElement(role, text) {
@@ -169,7 +339,13 @@ function createMessageElement(role, text) {
 
   const bubble = document.createElement('div');
   bubble.className = 'message__bubble';
-  bubble.textContent = text;
+
+  if (role === 'user') {
+    bubble.textContent = text;
+  } else {
+    bubble.classList.add('md-content');
+    bubble.innerHTML = renderMarkdown(text);
+  }
 
   wrapper.appendChild(avatar);
   wrapper.appendChild(bubble);

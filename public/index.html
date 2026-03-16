@@ -93,7 +93,15 @@
           </div>
           <div class="settings-field">
             <label class="settings-label" for="groq-model-input">Model <span class="settings-optional">(optional)</span></label>
-            <input type="text" id="groq-model-input" class="settings-input" placeholder="llama-3.1-8b-instant" />
+            <input type="text" id="groq-model-input" class="settings-input" placeholder="llama-3.1-8b-instant" list="groq-model-suggestions" autocomplete="off" />
+            <datalist id="groq-model-suggestions">
+              <option value="meta-llama/llama-4-maverick-17b-128e-instruct">GPT OSS 120B</option>
+              <option value="meta-llama/llama-4-scout-17b-16e-instruct">GPT OSS 20B / Llama 4 Scout</option>
+              <option value="qwen/qwen3-32b">Qwen 3 32B</option>
+              <option value="moonshotai/kimi-k2-instruct">Kimi K2</option>
+              <option value="llama-3.3-70b-versatile">Llama 3.3 70B</option>
+              <option value="llama-3.1-8b-instant">Llama 3.1 8B (default)</option>
+            </datalist>
           </div>
           <div class="settings-field">
             <label class="settings-label" for="system-prompt-input">System Prompt <span class="settings-optional">(optional)</span></label>
@@ -107,20 +115,133 @@
           <p class="settings-info">Reasoning mode uses the Groq API with the model below. Uses the same Groq API key configured above.</p>
           <div class="settings-field">
             <label class="settings-label" for="reasoning-model-input">Reasoning Model <span class="settings-optional">(default: deepseek-r1-distill-llama-70b)</span></label>
-            <input type="text" id="reasoning-model-input" class="settings-input" placeholder="deepseek-r1-distill-llama-70b" />
+            <input type="text" id="reasoning-model-input" class="settings-input" placeholder="deepseek-r1-distill-llama-70b" list="reasoning-model-suggestions" autocomplete="off" />
+            <datalist id="reasoning-model-suggestions">
+              <option value="deepseek-r1-distill-llama-70b">DeepSeek R1 70B (default)</option>
+              <option value="meta-llama/llama-4-maverick-17b-128e-instruct">GPT OSS 120B</option>
+              <option value="meta-llama/llama-4-scout-17b-16e-instruct">GPT OSS 20B</option>
+              <option value="qwen/qwen3-32b">Qwen 3 32B</option>
+            </datalist>
+          </div>
+        </div>
+
+        <!-- Available Models -->
+        <div class="settings-section">
+          <p class="settings-section__title">Available Models</p>
+          <p class="settings-info">Click any model to use it. API IDs are for the Groq endpoint.</p>
+          <div id="models-catalogue" class="models-catalogue">
+            <div class="models-category">
+              <button type="button" class="models-category__toggle" aria-expanded="false">
+                <span class="models-category__icon">🧠</span>
+                <span class="models-category__name">Reasoning</span>
+                <span class="models-category__chevron">▸</span>
+              </button>
+              <div class="models-category__list" hidden>
+                <button type="button" class="model-pill" data-model-id="meta-llama/llama-4-maverick-17b-128e-instruct">GPT OSS 120B</button>
+                <button type="button" class="model-pill" data-model-id="meta-llama/llama-4-scout-17b-16e-instruct">GPT OSS 20B</button>
+                <button type="button" class="model-pill" data-model-id="qwen/qwen3-32b">Qwen 3 32B</button>
+              </div>
+            </div>
+            <div class="models-category">
+              <button type="button" class="models-category__toggle" aria-expanded="false">
+                <span class="models-category__icon">🔧</span>
+                <span class="models-category__name">Function Calling / Tool Use</span>
+                <span class="models-category__chevron">▸</span>
+              </button>
+              <div class="models-category__list" hidden>
+                <button type="button" class="model-pill" data-model-id="meta-llama/llama-4-maverick-17b-128e-instruct">GPT OSS 120B</button>
+                <button type="button" class="model-pill" data-model-id="meta-llama/llama-4-scout-17b-16e-instruct">GPT OSS 20B</button>
+                <button type="button" class="model-pill" data-model-id="meta-llama/llama-4-scout-17b-16e-instruct">Llama 4 Scout</button>
+                <button type="button" class="model-pill" data-model-id="qwen/qwen3-32b">Qwen 3 32B</button>
+                <button type="button" class="model-pill" data-model-id="moonshotai/kimi-k2-instruct">Kimi K2</button>
+              </div>
+            </div>
+            <div class="models-category">
+              <button type="button" class="models-category__toggle" aria-expanded="false">
+                <span class="models-category__icon">🔊</span>
+                <span class="models-category__name">Text to Speech</span>
+                <span class="models-category__chevron">▸</span>
+              </button>
+              <div class="models-category__list" hidden>
+                <button type="button" class="model-pill" data-model-id="elevenlabs/tts">ElevenLabs TTS</button>
+                <button type="button" class="model-pill" data-model-id="canopy/orpheus-3-3b-english-ft">Orpheus English</button>
+                <button type="button" class="model-pill" data-model-id="canopy/orpheus-3-3b-arabic-sa-ft">Orpheus Arabic Saudi</button>
+              </div>
+            </div>
+            <div class="models-category">
+              <button type="button" class="models-category__toggle" aria-expanded="false">
+                <span class="models-category__icon">🎤</span>
+                <span class="models-category__name">Speech to Text</span>
+                <span class="models-category__chevron">▸</span>
+              </button>
+              <div class="models-category__list" hidden>
+                <button type="button" class="model-pill" data-model-id="whisper-large-v3">Whisper Large v3</button>
+                <button type="button" class="model-pill" data-model-id="whisper-large-v3-turbo">Whisper Large v3 Turbo</button>
+              </div>
+            </div>
+            <div class="models-category">
+              <button type="button" class="models-category__toggle" aria-expanded="false">
+                <span class="models-category__icon">💬</span>
+                <span class="models-category__name">Text to Text</span>
+                <span class="models-category__chevron">▸</span>
+              </button>
+              <div class="models-category__list" hidden>
+                <button type="button" class="model-pill" data-model-id="meta-llama/llama-4-maverick-17b-128e-instruct">GPT OSS 120B</button>
+                <button type="button" class="model-pill" data-model-id="meta-llama/llama-4-scout-17b-16e-instruct">GPT OSS 20B</button>
+                <button type="button" class="model-pill" data-model-id="moonshotai/kimi-k2-instruct">Kimi K2</button>
+                <button type="button" class="model-pill" data-model-id="meta-llama/llama-4-scout-17b-16e-instruct">Llama 4 Scout</button>
+                <button type="button" class="model-pill" data-model-id="llama-3.3-70b-versatile">Llama 3.3 70B</button>
+              </div>
+            </div>
+            <div class="models-category">
+              <button type="button" class="models-category__toggle" aria-expanded="false">
+                <span class="models-category__icon">👁️</span>
+                <span class="models-category__name">Vision</span>
+                <span class="models-category__chevron">▸</span>
+              </button>
+              <div class="models-category__list" hidden>
+                <button type="button" class="model-pill" data-model-id="meta-llama/llama-4-scout-17b-16e-instruct">Llama 4 Scout</button>
+              </div>
+            </div>
+            <div class="models-category">
+              <button type="button" class="models-category__toggle" aria-expanded="false">
+                <span class="models-category__icon">🌍</span>
+                <span class="models-category__name">Multilingual</span>
+                <span class="models-category__chevron">▸</span>
+              </button>
+              <div class="models-category__list" hidden>
+                <button type="button" class="model-pill" data-model-id="meta-llama/llama-4-maverick-17b-128e-instruct">GPT OSS 120B</button>
+                <button type="button" class="model-pill" data-model-id="meta-llama/llama-4-scout-17b-16e-instruct">GPT OSS 20B</button>
+                <button type="button" class="model-pill" data-model-id="moonshotai/kimi-k2-instruct">Kimi K2</button>
+                <button type="button" class="model-pill" data-model-id="meta-llama/llama-4-scout-17b-16e-instruct">Llama 4 Scout</button>
+                <button type="button" class="model-pill" data-model-id="llama-3.3-70b-versatile">Llama 3.3 70B</button>
+                <button type="button" class="model-pill" data-model-id="whisper-large-v3">Whisper Large v3</button>
+              </div>
+            </div>
+            <div class="models-category">
+              <button type="button" class="models-category__toggle" aria-expanded="false">
+                <span class="models-category__icon">🛡️</span>
+                <span class="models-category__name">Safety / Content Moderation</span>
+                <span class="models-category__chevron">▸</span>
+              </button>
+              <div class="models-category__list" hidden>
+                <button type="button" class="model-pill" data-model-id="meta-llama/llama-guard-4-12b">Safety GPT OSS 20B</button>
+              </div>
+            </div>
           </div>
         </div>
 
         <!-- MongoDB -->
         <div class="settings-section">
-          <p class="settings-section__title">MongoDB <span class="settings-optional">(optional)</span></p>
-          <p class="settings-info">Connect to MongoDB Atlas Data API to sync chats across devices. Leave blank to use local browser storage only.</p>
+          <p class="settings-section__title">MongoDB</p>
+          <p class="settings-info">API keys and chat history are stored securely in MongoDB on the server. Configure the connection string in your <code>.env</code> file (<code>MONGODB_URI</code>).</p>
+          <p class="settings-info">Optionally connect directly to MongoDB Atlas Data API from the browser to sync chats across devices.</p>
           <div class="settings-field">
-            <label class="settings-label" for="mongo-url-input">Data API Base URL</label>
+            <label class="settings-label" for="mongo-url-input">Data API Base URL <span class="settings-optional">(optional)</span></label>
             <input type="url" id="mongo-url-input" class="settings-input" placeholder="https://data.mongodb-api.com/app/…/endpoint/data/v1" />
           </div>
           <div class="settings-field">
-            <label class="settings-label" for="mongo-key-input">API Key</label>
+            <label class="settings-label" for="mongo-key-input">API Key <span class="settings-optional">(optional)</span></label>
             <input type="password" id="mongo-key-input" class="settings-input" placeholder="Atlas Data API key" autocomplete="off" />
           </div>
           <div class="settings-field">
@@ -135,7 +256,7 @@
 
         <!-- Save -->
         <div class="settings-section">
-          <p class="settings-info">Settings are saved in your browser's <code>localStorage</code>. Only use this app on devices you trust.</p>
+          <p class="settings-info">Settings are saved to MongoDB on the server and cached in your browser's <code>localStorage</code>.</p>
           <button id="save-settings-btn" class="btn btn--primary btn--full">Save Settings</button>
         </div>
       </div>
