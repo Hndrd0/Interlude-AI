@@ -1065,6 +1065,54 @@ body {
   animation: settings-flash 0.6s ease;
 }
 
+/* ─── Reasoning block ────────────────────────── */
+
+.reasoning-block {
+  margin-bottom: 0.75rem;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  overflow: hidden;
+  font-size: 0.85rem;
+}
+
+.reasoning-block__toggle {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.45rem 0.75rem;
+  background: var(--color-surface-2);
+  cursor: pointer;
+  list-style: none;
+  user-select: none;
+  color: var(--color-text-muted);
+  font-weight: 500;
+  font-size: 0.8rem;
+  letter-spacing: 0.02em;
+}
+
+.reasoning-block__toggle::-webkit-details-marker {
+  display: none;
+}
+
+.reasoning-block__toggle::before {
+  content: '▸';
+  font-size: 0.7rem;
+  transition: transform 0.2s;
+}
+
+details[open] > .reasoning-block__toggle::before {
+  transform: rotate(90deg);
+}
+
+.reasoning-block__content {
+  padding: 0.6rem 0.85rem;
+  background: var(--color-surface);
+  color: var(--color-text-muted);
+  border-top: 1px solid var(--color-border);
+  max-height: 18rem;
+  overflow-y: auto;
+}
+
 /* ─── Responsive ─────────────────────────────── */
 @media (max-width: 640px) {
   .sidebar {
