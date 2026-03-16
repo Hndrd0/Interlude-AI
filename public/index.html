@@ -128,25 +128,40 @@
         <!-- Text-to-Speech (ElevenLabs via Groq) -->
         <div class="settings-section">
           <p class="settings-section__title">Text-to-Speech <span class="settings-optional">(Groq)</span></p>
-          <p class="settings-info">Text-to-speech uses ElevenLabs TTS via the Groq API key configured above. Toggle the <strong>Speak</strong> button in the chat toolbar to enable auto-playback.</p>
+          <p class="settings-info">Text-to-speech uses the Groq API key configured above. Toggle the <strong>Speak</strong> button in the chat toolbar to enable auto-playback.</p>
           <div class="settings-field">
-            <label class="settings-label" for="tts-voice-input">Voice <span class="settings-optional">(default: aria)</span></label>
+            <label class="settings-label" for="tts-model-input">TTS Model <span class="settings-optional">(default: ElevenLabs TTS)</span></label>
+            <select id="tts-model-input" class="settings-input">
+              <option value="elevenlabs/tts">ElevenLabs TTS (default)</option>
+              <option value="canopy/orpheus-3-3b-english-ft">Orpheus English</option>
+            </select>
+          </div>
+          <div class="settings-field">
+            <label class="settings-label" for="tts-voice-input">Voice <span class="settings-optional">(default: aria for ElevenLabs · tara for Orpheus)</span></label>
             <input type="text" id="tts-voice-input" class="settings-input" placeholder="aria" list="tts-voice-suggestions" autocomplete="off" />
             <datalist id="tts-voice-suggestions">
-              <option value="aria">Aria (default)</option>
-              <option value="roger">Roger</option>
-              <option value="sarah">Sarah</option>
-              <option value="charlie">Charlie</option>
-              <option value="george">George</option>
-              <option value="callum">Callum</option>
-              <option value="river">River</option>
-              <option value="liam">Liam</option>
-              <option value="charlotte">Charlotte</option>
-              <option value="alice">Alice</option>
-              <option value="matilda">Matilda</option>
-              <option value="jessica">Jessica</option>
-              <option value="brian">Brian</option>
-              <option value="lily">Lily</option>
+              <option value="aria">Aria – ElevenLabs (default)</option>
+              <option value="roger">Roger – ElevenLabs</option>
+              <option value="sarah">Sarah – ElevenLabs</option>
+              <option value="charlie">Charlie – ElevenLabs</option>
+              <option value="george">George – ElevenLabs</option>
+              <option value="callum">Callum – ElevenLabs</option>
+              <option value="river">River – ElevenLabs</option>
+              <option value="liam">Liam – ElevenLabs</option>
+              <option value="charlotte">Charlotte – ElevenLabs</option>
+              <option value="alice">Alice – ElevenLabs</option>
+              <option value="matilda">Matilda – ElevenLabs</option>
+              <option value="jessica">Jessica – ElevenLabs</option>
+              <option value="brian">Brian – ElevenLabs</option>
+              <option value="lily">Lily – ElevenLabs</option>
+              <option value="tara">Tara – Orpheus (default)</option>
+              <option value="leah">Leah – Orpheus</option>
+              <option value="jess">Jess – Orpheus</option>
+              <option value="leo">Leo – Orpheus</option>
+              <option value="dan">Dan – Orpheus</option>
+              <option value="mia">Mia – Orpheus</option>
+              <option value="zac">Zac – Orpheus</option>
+              <option value="zoe">Zoe – Orpheus</option>
             </datalist>
           </div>
         </div>
@@ -338,7 +353,7 @@
               </svg>
               <span class="btn--mode__label">Reasoning</span>
             </button>
-            <button type="button" id="tts-btn" class="btn btn--mode" aria-label="Toggle text-to-speech" aria-pressed="false" title="Text-to-speech (ElevenLabs via Groq)">
+            <button type="button" id="tts-btn" class="btn btn--mode" aria-label="Toggle text-to-speech" aria-pressed="false" title="Text-to-speech (ElevenLabs TTS or Orpheus via Groq)">
               <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width="14" height="14">
                 <path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z"/>
               </svg>

@@ -9,6 +9,7 @@ const STORAGE_KEY_MONGO_DB      = 'interlude_ai_mongo_db';
 const STORAGE_KEY_MONGO_DS      = 'interlude_ai_mongo_datasource';
 const STORAGE_KEY_REASONING_MODEL = 'interlude_ai_reasoning_model';
 const STORAGE_KEY_TTS_VOICE     = 'interlude_ai_tts_voice';
+const STORAGE_KEY_TTS_MODEL     = 'interlude_ai_tts_model';
 
 const DEFAULT_GROQ_MODEL           = 'llama-3.1-8b-instant';
 const DEFAULT_SYSTEM_PROMPT        = 'You are Interlude AI, a helpful and knowledgeable assistant.';
@@ -62,6 +63,7 @@ const mongoDbInput      = document.getElementById('mongo-db-input');
 const mongoDsInput      = document.getElementById('mongo-ds-input');
 const reasoningModelInput = document.getElementById('reasoning-model-input');
 const ttsVoiceInput     = document.getElementById('tts-voice-input');
+const ttsModelInput     = document.getElementById('tts-model-input');
 const saveSettingsBtn   = document.getElementById('save-settings-btn');
 
 const micBtn       = document.getElementById('mic-btn');
@@ -121,6 +123,7 @@ async function openSettings() {
   mongoDbInput.value        = localStorage.getItem(STORAGE_KEY_MONGO_DB)          || '';
   mongoDsInput.value        = localStorage.getItem(STORAGE_KEY_MONGO_DS)          || '';
   ttsVoiceInput.value       = localStorage.getItem(STORAGE_KEY_TTS_VOICE)         || '';
+  ttsModelInput.value       = localStorage.getItem(STORAGE_KEY_TTS_MODEL)         || '';
   settingsOverlay.classList.add('is-open');
   settingsOverlay.setAttribute('aria-hidden', 'false');
 }
@@ -147,6 +150,7 @@ async function saveSettings() {
   set(STORAGE_KEY_MONGO_DS,        mongoDsInput.value.trim());
   set(STORAGE_KEY_REASONING_MODEL, rsnModel);
   set(STORAGE_KEY_TTS_VOICE,       ttsVoiceInput.value.trim());
+  set(STORAGE_KEY_TTS_MODEL,       ttsModelInput.value.trim());
 
   // Persist sensitive settings to MongoDB (server-side) for security
   await Promise.all([
@@ -747,14 +751,16 @@ async function callGroqTTS(text) {
   if (!apiKey) return;
 
   try {
-    const voice = localStorage.getItem(STORAGE_KEY_TTS_VOICE) || DEFAULT_TTS_VOICE;
+    const model        = localStorage.getItem(STORAGE_KEY_TTS_MODEL) || GROQ_TTS_MODEL;
+    const defaultVoice = model === 'canopy/orpheus-3-3b-english-ft' ? 'tara' : DEFAULT_TTS_VOICE;
+    const voice        = localStorage.getItem(STORAGE_KEY_TTS_VOICE) || defaultVoice;
     const res = await fetch(GROQ_TTS_URL, {
       method: 'POST',
       headers: {
         'Content-Type':  'application/json',
         'Authorization': `Bearer ${apiKey}`,
       },
-      body: JSON.stringify({ model: GROQ_TTS_MODEL, input: text, voice }),
+      body: JSON.stringify({ model, input: text, voice }),
     });
 
     if (!res.ok) {
@@ -1114,7 +1120,10 @@ messageInput.addEventListener('keydown', (e) => {
 
 function autoResizeTextarea() {
   messageInput.style.height = 'auto';
-  messageInput.style.height = `${messageInput.scrollHeight}px`;
+  const scrollH = messageInput.scrollHeight;
+  const maxH    = 160; // keep in sync with CSS max-height
+  messageInput.style.height      = Math.min(scrollH, maxH) + 'px';
+  messageInput.style.overflowY   = scrollH > maxH ? 'auto' : 'hidden';
 }
 
 messageInput.addEventListener('input', autoResizeTextarea);
@@ -1124,5 +1133,6 @@ messageInput.addEventListener('input', autoResizeTextarea);
 const savedTheme = localStorage.getItem(STORAGE_KEY_THEME);
 applyTheme(savedTheme === 'light');
 
+autoResizeTextarea();
 renderEmptyState();
 loadChats();
