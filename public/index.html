@@ -7,6 +7,7 @@
   <link rel="icon" href="/favicon.ico" type="image/x-icon" />
   <link rel="shortcut icon" href="/favicon.ico" type="image/x-icon" />
   <link rel="stylesheet" href="style.css" />
+  <script src="https://js.puter.com/v2/"></script>
 </head>
 <body>
   <!-- Mobile overlay -->
@@ -40,7 +41,7 @@
     </div>
 
     <div class="sidebar__footer">
-      <p class="sidebar__footer-text">Powered by Groq</p>
+      <p class="sidebar__footer-text" id="sidebar-footer-text">Powered by Groq</p>
     </div>
   </aside>
 
@@ -84,8 +85,20 @@
           </div>
         </div>
 
-        <!-- Groq -->
+        <!-- Provider -->
         <div class="settings-section">
+          <p class="settings-section__title">AI Provider</p>
+          <div class="settings-field">
+            <label class="settings-label" for="provider-select">Provider</label>
+            <select id="provider-select" class="settings-input">
+              <option value="groq">Groq (requires API key)</option>
+              <option value="puter">Puter.js (free, no API key needed)</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Groq -->
+        <div class="settings-section" id="groq-settings-section">
           <p class="settings-section__title">Groq</p>
           <div class="settings-field">
             <label class="settings-label" for="groq-key-input">API Key</label>
@@ -110,7 +123,7 @@
         </div>
 
         <!-- Research (Groq / Kimi K2) -->
-        <div class="settings-section">
+        <div class="settings-section" id="research-settings-section">
           <p class="settings-section__title">Research <span class="settings-optional">(Kimi K2)</span></p>
           <p class="settings-info">Research mode uses the Groq API with the model below. Uses the same Groq API key configured above.</p>
           <div class="settings-field">
@@ -122,6 +135,26 @@
               <option value="deepseek-r1-distill-llama-70b">DeepSeek R1 70B</option>
               <option value="meta-llama/llama-4-maverick-17b-128e-instruct">GPT OSS 120B</option>
               <option value="qwen/qwen3-32b">Qwen 3 32B</option>
+            </datalist>
+          </div>
+        </div>
+
+        <!-- Puter.js -->
+        <div class="settings-section" id="puter-settings-section">
+          <p class="settings-section__title">Puter.js</p>
+          <p class="settings-info">Puter.js provides free access to OpenAI models via the User-Pays model — no API key required on your end.</p>
+          <div class="settings-field">
+            <label class="settings-label" for="puter-model-input">Model <span class="settings-optional">(default: gpt-4o-mini)</span></label>
+            <input type="text" id="puter-model-input" class="settings-input" placeholder="gpt-4o-mini" list="puter-model-suggestions" autocomplete="off" />
+            <datalist id="puter-model-suggestions">
+              <option value="gpt-4o-mini">GPT-4o Mini (default)</option>
+              <option value="gpt-4o">GPT-4o</option>
+              <option value="gpt-5.4-nano">GPT-5.4 Nano</option>
+              <option value="gpt-5.4">GPT-5.4</option>
+              <option value="gpt-5.5">GPT-5.5</option>
+              <option value="gpt-5.3-chat">GPT-5.3 Chat</option>
+              <option value="openai/gpt-5.3-codex">Codex (GPT-5.3)</option>
+              <option value="openai/gpt-oss-120b">GPT-OSS 120B</option>
             </datalist>
           </div>
         </div>
