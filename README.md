@@ -1,6 +1,6 @@
 # Interlude AI
 
-A static AI chatbot that runs entirely on GitHub Pages. Chat history is stored in your browser (localStorage) or synced to MongoDB Atlas. Powered by Groq.
+A static AI chatbot that runs entirely on GitHub Pages. Chat history is stored in your browser (localStorage) or synced to MongoDB Atlas. Powered by Groq
 
 ## Features
 
