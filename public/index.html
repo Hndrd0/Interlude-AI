@@ -1,364 +1,138 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Interlude AI</title>
-  <link rel="icon" href="/favicon.ico" type="image/x-icon" />
-  <link rel="shortcut icon" href="/favicon.ico" type="image/x-icon" />
-  <link rel="stylesheet" href="style.css" />
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Claude</title>
+  <link rel="stylesheet" href="style.css">
 </head>
 <body>
-  <!-- Mobile overlay -->
-  <div id="sidebar-overlay" class="sidebar-overlay"></div>
-
-  <!-- Sidebar -->
-  <aside id="sidebar" class="sidebar">
-    <div class="sidebar__header">
-      <div class="sidebar__logo">
-        <span class="sidebar__logo-icon">✦</span>
-        <span class="sidebar__logo-text">Interlude AI</span>
+  <div class="app-container">
+    <!-- Sidebar -->
+    <aside class="sidebar" id="sidebar">
+      <div class="sidebar-header">
+        <span class="logo">Claude</span>
+        <div class="sidebar-actions">
+          <button class="icon-btn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg></button>
+          <button class="icon-btn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><line x1="9" y1="3" x2="9" y2="21"></line></svg></button>
+        </div>
       </div>
-      <button id="sidebar-close" class="sidebar__close" aria-label="Close sidebar">
-        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width="18" height="18">
-          <path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/>
-        </svg>
-      </button>
-    </div>
 
-    <div class="sidebar__body">
-      <button id="new-chat-btn" class="btn btn--new-chat">
-        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width="16" height="16">
-          <path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/>
-        </svg>
-        New Chat
-      </button>
-      <div class="sidebar__section">
-        <p class="sidebar__section-title">Recent</p>
-        <div id="chat-list" class="chat-list"></div>
-      </div>
-    </div>
-
-    <div class="sidebar__footer">
-      <p class="sidebar__footer-text">Powered by Groq</p>
-    </div>
-  </aside>
-
-  <!-- Settings Modal -->
-  <div id="settings-overlay" class="settings-overlay" aria-hidden="true">
-    <div class="settings-modal" role="dialog" aria-modal="true" aria-labelledby="settings-title">
-      <div class="settings-modal__header">
-        <h2 id="settings-title" class="settings-modal__title">Settings</h2>
-        <button id="settings-close" class="settings-modal__close" aria-label="Close settings">
-          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width="18" height="18">
-            <path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/>
-          </svg>
+      <div class="sidebar-content">
+        <button id="new-chat-btn" class="sidebar-item new-chat-btn">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+          New chat
         </button>
-      </div>
 
-      <div class="settings-modal__body">
-        <!-- Theme -->
-        <div class="settings-section">
-          <p class="settings-section__title">Appearance</p>
-          <div class="settings-row">
-            <span class="settings-row__label">Theme</span>
-            <div class="theme-toggle">
-              <span class="theme-toggle__label">
-                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width="14" height="14">
-                  <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
-                </svg>
-                Dark
-              </span>
-              <label class="toggle-switch" aria-label="Toggle light mode">
-                <input type="checkbox" id="theme-toggle-input" />
-                <span class="toggle-switch__track"></span>
-              </label>
-              <span class="theme-toggle__label">
-                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width="14" height="14">
-                  <circle cx="12" cy="12" r="5"/>
-                  <path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/>
-                </svg>
-                Light
-              </span>
-            </div>
-          </div>
+        <ul class="sidebar-nav">
+          <li class="sidebar-item active">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>
+            Chats
+          </li>
+          <li class="sidebar-item">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path></svg>
+            Projects
+          </li>
+          <li class="sidebar-item">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 2 7 12 12 22 7 12 2"></polygon><polyline points="2 17 12 22 22 17"></polyline><polyline points="2 12 12 17 22 12"></polyline></svg>
+            Artifacts
+          </li>
+          <li class="sidebar-item">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="16 18 22 12 16 6"></polyline><polyline points="8 6 2 12 8 18"></polyline></svg>
+            Code
+          </li>
+          <li class="sidebar-item">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><line x1="3" y1="9" x2="21" y2="9"></line><line x1="9" y1="21" x2="9" y2="9"></line></svg>
+            Customize
+          </li>
+        </ul>
+
+        <div class="sidebar-section">
+          <div class="section-title">Products</div>
+          <ul class="sidebar-nav">
+            <li class="sidebar-item">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20"></path><path d="M2 12h20"></path></svg>
+              Design
+            </li>
+          </ul>
         </div>
 
-        <!-- Groq -->
-        <div class="settings-section">
-          <p class="settings-section__title">Groq</p>
-          <div class="settings-field">
-            <label class="settings-label" for="groq-key-input">API Key</label>
-            <input type="password" id="groq-key-input" class="settings-input" placeholder="gsk_…" autocomplete="off" />
-          </div>
-          <div class="settings-field">
-            <label class="settings-label" for="groq-model-input">Model <span class="settings-optional">(optional)</span></label>
-            <input type="text" id="groq-model-input" class="settings-input" placeholder="llama-3.1-8b-instant" list="groq-model-suggestions" autocomplete="off" />
-            <datalist id="groq-model-suggestions">
-              <option value="meta-llama/llama-4-maverick-17b-128e-instruct">GPT OSS 120B</option>
-              <option value="meta-llama/llama-4-scout-17b-16e-instruct">GPT OSS 20B / Llama 4 Scout</option>
-              <option value="qwen/qwen3-32b">Qwen 3 32B</option>
-              <option value="moonshotai/kimi-k2-instruct">Kimi K2</option>
-              <option value="llama-3.3-70b-versatile">Llama 3.3 70B</option>
-              <option value="llama-3.1-8b-instant">Llama 3.1 8B (default)</option>
-            </datalist>
-          </div>
-          <div class="settings-field">
-            <label class="settings-label" for="system-prompt-input">System Prompt <span class="settings-optional">(optional)</span></label>
-            <textarea id="system-prompt-input" class="settings-input settings-textarea" rows="3" placeholder="You are Interlude AI, a helpful and knowledgeable assistant."></textarea>
-          </div>
+        <div class="sidebar-section">
+          <div class="section-title">Starred</div>
+          <ul class="sidebar-nav">
+            <li class="sidebar-item">Consumer Rights</li>
+          </ul>
         </div>
 
-        <!-- Research (Groq / Kimi K2) -->
-        <div class="settings-section">
-          <p class="settings-section__title">Research <span class="settings-optional">(Kimi K2)</span></p>
-          <p class="settings-info">Research mode uses the Groq API with the model below. Uses the same Groq API key configured above.</p>
-          <div class="settings-field">
-            <label class="settings-label" for="reasoning-model-input">Research Model <span class="settings-optional">(default: moonshotai/kimi-k2-instruct-0905)</span></label>
-            <input type="text" id="reasoning-model-input" class="settings-input" placeholder="moonshotai/kimi-k2-instruct-0905" list="reasoning-model-suggestions" autocomplete="off" />
-            <datalist id="reasoning-model-suggestions">
-              <option value="moonshotai/kimi-k2-instruct-0905">Kimi K2 (default)</option>
-              <option value="moonshotai/kimi-k2-instruct">Kimi K2 (latest)</option>
-              <option value="deepseek-r1-distill-llama-70b">DeepSeek R1 70B</option>
-              <option value="meta-llama/llama-4-maverick-17b-128e-instruct">GPT OSS 120B</option>
-              <option value="qwen/qwen3-32b">Qwen 3 32B</option>
-            </datalist>
-          </div>
-        </div>
-
-        <!-- Available Models -->
-        <div class="settings-section">
-          <p class="settings-section__title">Available Models</p>
-          <p class="settings-info">Click any model to use it. API IDs are for the Groq endpoint.</p>
-          <div id="models-catalogue" class="models-catalogue">
-            <div class="models-category">
-              <button type="button" class="models-category__toggle" aria-expanded="false">
-                <span class="models-category__icon">🧠</span>
-                <span class="models-category__name">Research</span>
-                <span class="models-category__chevron">▸</span>
-              </button>
-              <div class="models-category__list" hidden>
-                <button type="button" class="model-pill" data-model-id="moonshotai/kimi-k2-instruct-0905">Kimi K2</button>
-                <button type="button" class="model-pill" data-model-id="meta-llama/llama-4-maverick-17b-128e-instruct">GPT OSS 120B</button>
-                <button type="button" class="model-pill" data-model-id="meta-llama/llama-4-scout-17b-16e-instruct">GPT OSS 20B</button>
-                <button type="button" class="model-pill" data-model-id="qwen/qwen3-32b">Qwen 3 32B</button>
-              </div>
-            </div>
-            <div class="models-category">
-              <button type="button" class="models-category__toggle" aria-expanded="false">
-                <span class="models-category__icon">🔧</span>
-                <span class="models-category__name">Function Calling / Tool Use</span>
-                <span class="models-category__chevron">▸</span>
-              </button>
-              <div class="models-category__list" hidden>
-                <button type="button" class="model-pill" data-model-id="meta-llama/llama-4-maverick-17b-128e-instruct">GPT OSS 120B</button>
-                <button type="button" class="model-pill" data-model-id="meta-llama/llama-4-scout-17b-16e-instruct">GPT OSS 20B</button>
-                <button type="button" class="model-pill" data-model-id="meta-llama/llama-4-scout-17b-16e-instruct">Llama 4 Scout</button>
-                <button type="button" class="model-pill" data-model-id="qwen/qwen3-32b">Qwen 3 32B</button>
-                <button type="button" class="model-pill" data-model-id="moonshotai/kimi-k2-instruct">Kimi K2</button>
-              </div>
-            </div>
-            <div class="models-category">
-              <button type="button" class="models-category__toggle" aria-expanded="false">
-                <span class="models-category__icon">🎤</span>
-                <span class="models-category__name">Speech to Text</span>
-                <span class="models-category__chevron">▸</span>
-              </button>
-              <div class="models-category__list" hidden>
-                <button type="button" class="model-pill" data-model-id="whisper-large-v3">Whisper Large v3</button>
-                <button type="button" class="model-pill" data-model-id="whisper-large-v3-turbo">Whisper Large v3 Turbo</button>
-              </div>
-            </div>
-            <div class="models-category">
-              <button type="button" class="models-category__toggle" aria-expanded="false">
-                <span class="models-category__icon">💬</span>
-                <span class="models-category__name">Text to Text</span>
-                <span class="models-category__chevron">▸</span>
-              </button>
-              <div class="models-category__list" hidden>
-                <button type="button" class="model-pill" data-model-id="meta-llama/llama-4-maverick-17b-128e-instruct">GPT OSS 120B</button>
-                <button type="button" class="model-pill" data-model-id="meta-llama/llama-4-scout-17b-16e-instruct">GPT OSS 20B</button>
-                <button type="button" class="model-pill" data-model-id="moonshotai/kimi-k2-instruct">Kimi K2</button>
-                <button type="button" class="model-pill" data-model-id="meta-llama/llama-4-scout-17b-16e-instruct">Llama 4 Scout</button>
-                <button type="button" class="model-pill" data-model-id="llama-3.3-70b-versatile">Llama 3.3 70B</button>
-              </div>
-            </div>
-            <div class="models-category">
-              <button type="button" class="models-category__toggle" aria-expanded="false">
-                <span class="models-category__icon">👁️</span>
-                <span class="models-category__name">Vision</span>
-                <span class="models-category__chevron">▸</span>
-              </button>
-              <div class="models-category__list" hidden>
-                <button type="button" class="model-pill" data-model-id="meta-llama/llama-4-scout-17b-16e-instruct">Llama 4 Scout</button>
-              </div>
-            </div>
-            <div class="models-category">
-              <button type="button" class="models-category__toggle" aria-expanded="false">
-                <span class="models-category__icon">🌍</span>
-                <span class="models-category__name">Multilingual</span>
-                <span class="models-category__chevron">▸</span>
-              </button>
-              <div class="models-category__list" hidden>
-                <button type="button" class="model-pill" data-model-id="meta-llama/llama-4-maverick-17b-128e-instruct">GPT OSS 120B</button>
-                <button type="button" class="model-pill" data-model-id="meta-llama/llama-4-scout-17b-16e-instruct">GPT OSS 20B</button>
-                <button type="button" class="model-pill" data-model-id="moonshotai/kimi-k2-instruct">Kimi K2</button>
-                <button type="button" class="model-pill" data-model-id="meta-llama/llama-4-scout-17b-16e-instruct">Llama 4 Scout</button>
-                <button type="button" class="model-pill" data-model-id="llama-3.3-70b-versatile">Llama 3.3 70B</button>
-                <button type="button" class="model-pill" data-model-id="whisper-large-v3">Whisper Large v3</button>
-              </div>
-            </div>
-            <div class="models-category">
-              <button type="button" class="models-category__toggle" aria-expanded="false">
-                <span class="models-category__icon">🛡️</span>
-                <span class="models-category__name">Safety / Content Moderation</span>
-                <span class="models-category__chevron">▸</span>
-              </button>
-              <div class="models-category__list" hidden>
-                <button type="button" class="model-pill" data-model-id="meta-llama/llama-guard-4-12b">Safety GPT OSS 20B</button>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <!-- MongoDB -->
-        <div class="settings-section">
-          <p class="settings-section__title">MongoDB</p>
-          <p class="settings-info">API keys and chat history are stored securely in MongoDB on the server. Configure the connection string in your <code>.env</code> file (<code>MONGODB_URI</code>).</p>
-          <p class="settings-info">Optionally connect directly to MongoDB Atlas Data API from the browser to sync chats across devices.</p>
-          <div class="settings-field">
-            <label class="settings-label" for="mongo-url-input">Data API Base URL <span class="settings-optional">(optional)</span></label>
-            <input type="url" id="mongo-url-input" class="settings-input" placeholder="https://data.mongodb-api.com/app/…/endpoint/data/v1" />
-          </div>
-          <div class="settings-field">
-            <label class="settings-label" for="mongo-key-input">API Key <span class="settings-optional">(optional)</span></label>
-            <input type="password" id="mongo-key-input" class="settings-input" placeholder="Atlas Data API key" autocomplete="off" />
-          </div>
-          <div class="settings-field">
-            <label class="settings-label" for="mongo-db-input">Database <span class="settings-optional">(default: interlude-ai)</span></label>
-            <input type="text" id="mongo-db-input" class="settings-input" placeholder="interlude-ai" />
-          </div>
-          <div class="settings-field">
-            <label class="settings-label" for="mongo-ds-input">Data Source <span class="settings-optional">(default: Cluster0)</span></label>
-            <input type="text" id="mongo-ds-input" class="settings-input" placeholder="Cluster0" />
-          </div>
-        </div>
-
-        <!-- Save -->
-        <div class="settings-section">
-          <p class="settings-info">Settings are saved to MongoDB on the server and cached in your browser's <code>localStorage</code>.</p>
-          <button id="save-settings-btn" class="btn btn--primary btn--full">Save Settings</button>
+        <div class="sidebar-section">
+          <div class="section-title">Recents</div>
+          <ul id="chat-history-list" class="sidebar-nav chat-history-list">
+            <!-- Chat history will go here -->
+          </ul>
         </div>
       </div>
-    </div>
+
+      <div class="user-profile">
+        <div class="avatar">H</div>
+        <div class="user-info">
+          <div class="user-name">hardik</div>
+        </div>
+      </div>
+    </aside>
+
+    <!-- Main Content -->
+    <main class="main-content">
+      <header class="topbar">
+        <div></div> <!-- Spacer -->
+        <button class="icon-btn avatar-btn">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+        </button>
+      </header>
+
+      <div class="chat-container">
+        <div id="chat-messages" class="chat-messages">
+          <div class="welcome-screen">
+            <h1><svg class="star-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg> Afternoon, hardik</h1>
+
+            <div class="input-area-wrapper">
+              <div class="input-container">
+                <form id="chat-form" class="chat-form">
+                  <textarea id="message-input" placeholder="Type / for skills" rows="1" required></textarea>
+
+                  <div class="input-actions">
+                    <button type="button" class="icon-btn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg></button>
+
+                    <div class="right-actions">
+                      <select id="model-select" class="model-select">
+                        <option value="claude-3-opus">Claude 3 Opus</option>
+                        <option value="claude-3-sonnet">Claude 3 Sonnet</option>
+                        <option value="claude-3-haiku">Haiku 4.5 Extended</option>
+                      </select>
+
+                      <button type="button" class="icon-btn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"></path><path d="M19 10v2a7 7 0 0 1-14 0v-2"></path><line x1="12" y1="19" x2="12" y2="22"></line></svg></button>
+                      <button type="button" class="icon-btn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v20"></path><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path></svg></button>
+                      <button type="submit" id="send-btn" class="send-btn" aria-label="Send Message" style="display:none;">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>
+                      </button>
+                    </div>
+                  </div>
+                </form>
+              </div>
+
+              <div class="action-chips">
+                <button class="chip"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="16 18 22 12 16 6"></polyline><polyline points="8 6 2 12 8 18"></polyline></svg> Code</button>
+                <button class="chip"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path></svg> Learn</button>
+                <button class="chip"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9"></path><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path></svg> Create</button>
+                <button class="chip"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg> Write</button>
+                <button class="chip"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12 2 2 22 22 22"></polygon></svg> From Drive</button>
+              </div>
+            </div>
+          </div>
+          <!-- Messages will go here -->
+        </div>
+      </div>
+    </main>
   </div>
-
-  <!-- Main content -->
-  <main class="main">
-    <header class="topbar">
-      <button id="sidebar-toggle" class="topbar__menu-btn" aria-label="Toggle sidebar">
-        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width="20" height="20">
-          <path d="M3 18h18v-2H3v2zm0-5h18v-2H3v2zm0-7v2h18V6H3z"/>
-        </svg>
-      </button>
-      <span class="topbar__title">Interlude AI</span>
-      <div class="topbar__spacer"></div>
-      <button id="settings-btn" class="topbar__icon-btn" aria-label="Open settings">
-        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width="20" height="20">
-          <path d="M19.14 12.94c.04-.3.06-.61.06-.94s-.02-.64-.07-.94l2.03-1.58a.49.49 0 0 0 .12-.61l-1.92-3.32a.49.49 0 0 0-.59-.22l-2.39.96a6.97 6.97 0 0 0-1.62-.94l-.36-2.54a.484.484 0 0 0-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96a.48.48 0 0 0-.59.22L2.74 8.87a.476.476 0 0 0 .12.61l2.03 1.58c-.05.3-.07.62-.07.94s.02.64.07.94l-2.03 1.58a.49.49 0 0 0-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.37 1.04.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.57 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32a.49.49 0 0 0-.12-.61l-2.01-1.58zM12 15.6c-1.98 0-3.6-1.62-3.6-3.6s1.62-3.6 3.6-3.6 3.6 1.62 3.6 3.6-1.62 3.6-3.6 3.6z"/>
-        </svg>
-      </button>
-    </header>
-
-    <div id="chat-window" class="chat-window" aria-live="polite" aria-label="Chat messages"></div>
-
-    <div class="input-area">
-      <form id="chat-form" class="chat-form" autocomplete="off">
-        <!-- Image preview (shown when an image is attached) -->
-        <div id="image-preview-area" class="image-preview-area" hidden>
-          <div class="image-preview-wrapper">
-            <img id="image-preview" class="image-preview__img" alt="Attached image" />
-            <button type="button" id="remove-image-btn" class="image-preview__remove" aria-label="Remove image">×</button>
-          </div>
-        </div>
-        <textarea
-          id="message-input"
-          class="chat-form__input"
-          placeholder="Message Interlude AI…"
-          rows="1"
-          aria-label="Message input"
-        ></textarea>
-        <div class="chat-form__actions">
-          <div class="chat-form__modes">
-            <button type="button" id="mic-btn" class="btn btn--mode" aria-label="Start recording" title="Dictate with Whisper">
-              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width="14" height="14">
-                <path d="M12 14a3 3 0 0 0 3-3V5a3 3 0 0 0-6 0v6a3 3 0 0 0 3 3zm5-3a5 5 0 0 1-10 0H5a7 7 0 0 0 6 6.93V20H9v2h6v-2h-2v-2.07A7 7 0 0 0 19 11h-2z"/>
-              </svg>
-              <span class="btn--mode__label">Dictate</span>
-            </button>
-            <button type="button" id="reasoning-btn" class="btn btn--mode" aria-label="Toggle research mode" aria-pressed="false" title="Research mode (Kimi K2)">
-              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width="14" height="14">
-                <path d="M9 21c0 .55.45 1 1 1h4c.55 0 1-.45 1-1v-1H9v1zm3-19C8.14 2 5 5.14 5 9c0 2.38 1.19 4.47 3 5.74V17c0 .55.45 1 1 1h6c.55 0 1-.45 1-1v-2.26c1.81-1.27 3-3.36 3-5.74 0-3.86-3.14-7-7-7z"/>
-              </svg>
-              <span class="btn--mode__label">Research</span>
-            </button>
-            <div class="image-btn-wrapper">
-              <button type="button" id="image-btn" class="btn btn--mode" aria-label="Add image" aria-haspopup="true" aria-expanded="false" title="Add a photo or use camera">
-                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width="14" height="14">
-                  <path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/>
-                </svg>
-                <span class="btn--mode__label">Image</span>
-              </button>
-              <div id="image-menu" class="image-menu" hidden role="menu">
-                <button type="button" id="upload-photo-btn" class="image-menu__item" role="menuitem">
-                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width="14" height="14"><path d="M21 19V5c0-1.1-.9-2-2-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2zM8.5 13.5l2.5 3.01L14.5 12l4.5 6H5l3.5-4.5z"/></svg>
-                  Upload Photo
-                </button>
-                <button type="button" id="use-camera-btn" class="image-menu__item" role="menuitem">
-                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width="14" height="14"><path d="M12 15.2A3.2 3.2 0 0 0 15.2 12 3.2 3.2 0 0 0 12 8.8 3.2 3.2 0 0 0 8.8 12a3.2 3.2 0 0 0 3.2 3.2zm-1-14H9L7 3H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V5a2 2 0 0 0-2-2h-3L15 1h-4zm1 15a5 5 0 1 1 0-10 5 5 0 0 1 0 10z"/></svg>
-                  Use Camera
-                </button>
-              </div>
-            </div>
-          </div>
-          <button type="submit" id="send-btn" class="btn btn--send" aria-label="Send message">
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width="18" height="18">
-              <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/>
-            </svg>
-          </button>
-        </div>
-      </form>
-      <p class="input-area__hint" id="input-hint">Press <kbd>Enter</kbd> to send · <kbd>Shift+Enter</kbd> for new line</p>
-    </div>
-  </main>
-
-  <!-- Hidden file inputs for image attachment -->
-  <input type="file" id="image-upload-input" accept="image/*" style="display:none" aria-hidden="true" />
-  <input type="file" id="camera-capture-input" accept="image/*" capture="environment" style="display:none" aria-hidden="true" />
-
-  <!-- Camera Modal -->
-  <div id="camera-modal" class="camera-modal-overlay" hidden aria-modal="true" role="dialog" aria-label="Camera">
-    <div class="camera-modal__box">
-      <div class="camera-modal__header">
-        <span class="camera-modal__title">Take a Photo</span>
-        <button type="button" id="camera-close-btn" class="camera-modal__close" aria-label="Close camera">
-          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width="18" height="18">
-            <path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/>
-          </svg>
-        </button>
-      </div>
-      <video id="camera-video" class="camera-modal__video" autoplay playsinline muted></video>
-      <canvas id="camera-canvas" hidden></canvas>
-      <div class="camera-modal__actions">
-        <button type="button" id="capture-photo-btn" class="btn btn--primary">
-          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width="16" height="16"><path d="M12 15.2A3.2 3.2 0 0 0 15.2 12 3.2 3.2 0 0 0 12 8.8 3.2 3.2 0 0 0 8.8 12a3.2 3.2 0 0 0 3.2 3.2zm-1-14H9L7 3H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V5a2 2 0 0 0-2-2h-3L15 1h-4zm1 15a5 5 0 1 1 0-10 5 5 0 0 1 0 10z"/></svg>
-          Capture
-        </button>
-        <button type="button" id="camera-cancel-btn" class="btn btn--mode">Cancel</button>
-      </div>
-    </div>
-  </div>
-
   <script src="app.js"></script>
 </body>
 </html>
