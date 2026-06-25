@@ -3,6 +3,20 @@ import fetch from 'node-fetch';
 
 const TOKENS_PER_HOUR = 100000;
 
+const MODEL_WHITELIST = [
+  "gpt-5",
+  "gpt-4.1",
+  "gpt-4o",
+  "claude-sonnet-4",
+  "claude-opus-4",
+  "gemini-2.5-pro",
+  "gemini-2.5-flash",
+  "deepseek-r1",
+  "deepseek-v3",
+  "qwen-3-235b",
+  "llama-4-maverick"
+];
+
 export default async ({ req, res, log, error }) => {
     // 1. Initialize Appwrite Client
     const client = new Client()
@@ -112,17 +126,10 @@ export default async ({ req, res, log, error }) => {
 
         // --- Handle Models Request ---
         if (action === 'models') {
-            try {
-                const modelsRes = await fetch("https://g4f.space/v1/models");
-                if (!modelsRes.ok) {
-                    throw new Error(`Failed to fetch models: ${modelsRes.status}`);
-                }
-                const modelsData = await modelsRes.json();
-                return res.json({ success: true, models: modelsData.data }, 200, corsHeaders);
-            } catch (err) {
-                error("Error fetching models:", err);
-                return res.json({ error: "Failed to fetch available models" }, 500, corsHeaders);
-            }
+            return res.json({
+                success: true,
+                models: MODEL_WHITELIST.map(id => ({ id, name: id }))
+            }, 200, corsHeaders);
         }
 
         // --- Handle Chat Request ---
@@ -136,22 +143,22 @@ export default async ({ req, res, log, error }) => {
             }
 
             try {
-                // Fetch dynamic whitelist
-                const modelsRes = await fetch("https://g4f.space/v1/models");
-                let validModels = [];
-                if (modelsRes.ok) {
-                    const modelsData = await modelsRes.json();
-                    validModels = modelsData.data || [];
-                }
-
-                // Fallback validation
-                const isModelValid = validModels.some(m => m.id === requestedModel);
-                if (validModels.length > 0 && !isModelValid) {
-                    console.log(`Invalid model ${requestedModel}, falling back to gpt-4o`);
-                    requestedModel = 'gpt-4o';
-                }
-
                 console.log("Requested model:", requestedModel);
+
+                let model = requestedModel;
+                if (!MODEL_WHITELIST.includes(requestedModel)) {
+                    console.log(`Invalid model ${requestedModel}, falling back to gpt-4o`);
+                    model = "gpt-4o";
+                }
+
+                console.log("Final model:", model);
+
+                const g4fPayload = {
+                    model: model,
+                    messages: messages
+                };
+
+                console.log(JSON.stringify(g4fPayload, null, 2));
 
                 // Call Official G4F API directly using fetch and secret API Key
                 const g4fRes = await fetch("https://g4f.space/v1/chat/completions", {
@@ -160,18 +167,19 @@ export default async ({ req, res, log, error }) => {
                         "Authorization": `Bearer ${process.env.G4F_API_KEY}`,
                         "Content-Type": "application/json"
                     },
-                    body: JSON.stringify({
-                        model: requestedModel,
-                        messages: messages
-                    })
+                    body: JSON.stringify(g4fPayload)
                 });
 
                 if (!g4fRes.ok) {
                     const errText = await g4fRes.text();
-                    error("G4F API Error:", errText);
+                    log(`G4F API Error: Status ${g4fRes.status}`);
+                    log(`Response body: ${errText}`);
+                    log(`Selected model: ${model}`);
+
                     return res.json({
                         success: false,
-                        model: requestedModel,
+                        model: model,
+                        status: g4fRes.status,
                         g4fError: errText
                     }, 500, corsHeaders);
                 }
