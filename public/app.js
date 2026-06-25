@@ -80,7 +80,7 @@ const themeRadios = document.querySelectorAll('input[name="theme"]');
 // --- State ---
 let chats = JSON.parse(localStorage.getItem('interlude_chats')) || [];
 let activeChatId = null;
-let currentModelId = localStorage.getItem('interlude_model') || 'gpt-4o';
+let currentModelId = localStorage.getItem('interlude_model') || 'srv_mkoloq41e34074b6133e:gpt-5.5';
 let availableModels = [];
 
 // --- Initialization Logic ---
@@ -186,14 +186,14 @@ async function fetchAvailableModels() {
 
             // Validate currentModelId
             if (availableModels.length > 0 && !availableModels.some(m => m.id === currentModelId)) {
-                currentModelId = 'gpt-4o'; // fallback
+                currentModelId = 'srv_mkoloq41e34074b6133e:gpt-5.5'; // fallback
                 localStorage.setItem('interlude_model', currentModelId);
             }
         }
     } catch (e) {
         console.error("Failed to fetch models:", e);
         // Fallback array if totally offline/failing
-        availableModels = [{ id: 'gpt-4o', name: 'GPT-4o (Fallback)', provider: 'OpenAI' }];
+        availableModels = [{ id: 'srv_mkoloq41e34074b6133e:gpt-5.5', name: 'GPT-5.5 (Fallback)', provider: 'OpenAI' }];
     }
 }
 
@@ -203,7 +203,7 @@ function renderModelPicker() {
 
     if (availableModels.length === 0) return;
 
-    let currentModel = availableModels.find(m => m.id === currentModelId) || availableModels.find(m => m.id === 'gpt-4o') || availableModels[0];
+    let currentModel = availableModels.find(m => m.id === currentModelId) || availableModels.find(m => m.id === 'srv_mkoloq41e34074b6133e:gpt-5.5') || availableModels[0];
     currentModelNameEl.textContent = currentModel.name;
 
     availableModels.forEach(model => {
