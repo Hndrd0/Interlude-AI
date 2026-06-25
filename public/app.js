@@ -1,20 +1,20 @@
 const DOM = {
   sidebar: document.getElementById('sidebar'),
-  sidebarToggle: document.getElementById('sidebar-toggle'),
   newChatBtn: document.getElementById('new-chat-btn'),
   chatHistoryList: document.getElementById('chat-history-list'),
   modelSelect: document.getElementById('model-select'),
   chatMessages: document.getElementById('chat-messages'),
+  chatContainer: document.querySelector('.chat-container'),
   chatForm: document.getElementById('chat-form'),
   messageInput: document.getElementById('message-input'),
   sendBtn: document.getElementById('send-btn'),
-  welcomeScreen: document.querySelector('.welcome-screen')
+  welcomeScreen: document.querySelector('.welcome-screen'),
+  inputAreaWrapper: document.querySelector('.input-area-wrapper')
 };
 
 const STATE = {
   chats: JSON.parse(localStorage.getItem('claude_chats') || '[]'),
   currentChatId: null,
-  isSidebarOpen: true
 };
 
 function generateId() {
@@ -25,22 +25,25 @@ function saveState() {
   localStorage.setItem('claude_chats', JSON.stringify(STATE.chats));
 }
 
-// UI Toggles
-DOM.sidebarToggle.addEventListener('click', () => {
-  STATE.isSidebarOpen = !STATE.isSidebarOpen;
-  DOM.sidebar.classList.toggle('closed', !STATE.isSidebarOpen);
-});
-
 // Auto-resize textarea
 DOM.messageInput.addEventListener('input', function() {
   this.style.height = 'auto';
   this.style.height = (this.scrollHeight) + 'px';
+
+  // Show/hide send button based on input
+  if (this.value.trim().length > 0) {
+    DOM.sendBtn.style.display = 'flex';
+  } else {
+    DOM.sendBtn.style.display = 'none';
+  }
 });
 
 DOM.messageInput.addEventListener('keydown', (e) => {
   if (e.key === 'Enter' && !e.shiftKey) {
     e.preventDefault();
-    DOM.chatForm.dispatchEvent(new Event('submit'));
+    if (DOM.messageInput.value.trim().length > 0) {
+      DOM.chatForm.dispatchEvent(new Event('submit'));
+    }
   }
 });
 
@@ -49,7 +52,7 @@ function renderSidebar() {
   DOM.chatHistoryList.innerHTML = '';
   STATE.chats.sort((a, b) => b.updatedAt - a.updatedAt).forEach(chat => {
     const li = document.createElement('li');
-    li.className = `chat-item ${chat.id === STATE.currentChatId ? 'active' : ''}`;
+    li.className = `sidebar-item ${chat.id === STATE.currentChatId ? 'active' : ''}`;
     li.textContent = chat.title || 'New Chat';
     li.addEventListener('click', () => loadChat(chat.id));
     DOM.chatHistoryList.appendChild(li);
@@ -63,31 +66,46 @@ function loadChat(chatId) {
 
   DOM.chatMessages.innerHTML = '';
   if (chat && chat.messages.length > 0) {
+    DOM.chatContainer.classList.add('has-messages');
+
+    // Move input to bottom
+    const inputWrapper = document.createElement('div');
+    inputWrapper.className = 'fixed-bottom-input';
+    inputWrapper.appendChild(DOM.inputAreaWrapper);
+    DOM.chatContainer.appendChild(inputWrapper);
+
     chat.messages.forEach(msg => {
       appendMessageToUI(msg.role, msg.content);
     });
   } else {
-    DOM.chatMessages.appendChild(DOM.welcomeScreen);
+    startNewChatUI();
   }
 
   renderSidebar();
 }
 
-// Start new chat
-DOM.newChatBtn.addEventListener('click', () => {
+function startNewChatUI() {
   STATE.currentChatId = null;
   DOM.chatMessages.innerHTML = '';
+  DOM.chatContainer.classList.remove('has-messages');
+
+  // Remove fixed bottom input wrapper if it exists and put input back in welcome screen
+  const fixedInput = document.querySelector('.fixed-bottom-input');
+  if (fixedInput) {
+    DOM.welcomeScreen.appendChild(DOM.inputAreaWrapper);
+    fixedInput.remove();
+  }
+
   DOM.chatMessages.appendChild(DOM.welcomeScreen);
   renderSidebar();
   DOM.messageInput.focus();
-});
+}
+
+// Start new chat
+DOM.newChatBtn.addEventListener('click', startNewChatUI);
 
 // Append message to UI
 function appendMessageToUI(role, content) {
-  if (DOM.welcomeScreen && DOM.welcomeScreen.parentNode) {
-    DOM.welcomeScreen.remove();
-  }
-
   const msgDiv = document.createElement('div');
   msgDiv.className = `message ${role}`;
 
@@ -99,7 +117,7 @@ function appendMessageToUI(role, content) {
 
   const contentDiv = document.createElement('div');
   contentDiv.className = 'message-content';
-  contentDiv.textContent = content; // Using textContent for basic safety, could implement markdown later
+  contentDiv.textContent = content; // Using textContent for basic safety
 
   msgDiv.appendChild(contentDiv);
   DOM.chatMessages.appendChild(msgDiv);
@@ -137,7 +155,17 @@ DOM.chatForm.addEventListener('submit', async (e) => {
 
   DOM.messageInput.value = '';
   DOM.messageInput.style.height = 'auto';
+  DOM.sendBtn.style.display = 'none';
   DOM.sendBtn.disabled = true;
+
+  // Transition UI if first message
+  if (!DOM.chatContainer.classList.contains('has-messages')) {
+    DOM.chatContainer.classList.add('has-messages');
+    const inputWrapper = document.createElement('div');
+    inputWrapper.className = 'fixed-bottom-input';
+    inputWrapper.appendChild(DOM.inputAreaWrapper);
+    DOM.chatContainer.appendChild(inputWrapper);
+  }
 
   // 1. Add user message to UI
   appendMessageToUI('user', content);
