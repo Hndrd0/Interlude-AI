@@ -135,7 +135,7 @@ export default async ({ req, res, log, error }) => {
         // --- Handle Chat Request ---
         if (action === 'chat') {
             const messages = body.messages || [];
-            let requestedModel = body.model || 'gpt-4o'; // Default model
+            let requestedModel = body.model || 'srv_mkoloq41e34074b6133e:gpt-5.5'; // Default model
 
             // Quota check before request
             if (!userDoc.isAdmin && userDoc.tokenUsed >= TOKENS_PER_HOUR) {
@@ -148,7 +148,7 @@ export default async ({ req, res, log, error }) => {
                 let model = requestedModel;
                 if (!MODEL_WHITELIST.includes(requestedModel)) {
                     console.log(`Invalid model ${requestedModel}, falling back to gpt-4o`);
-                    model = "gpt-4o";
+                    model = "srv_mkoloq41e34074b6133e:gpt-5.5";
                 }
 
                 console.log("Final model:", model);
