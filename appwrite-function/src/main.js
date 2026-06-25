@@ -3,19 +3,37 @@ import fetch from 'node-fetch';
 
 const TOKENS_PER_HOUR = 100000;
 
-const MODEL_WHITELIST = [
-  "gpt-5",
-  "gpt-4.1",
-  "gpt-4o",
-  "claude-sonnet-4",
-  "claude-opus-4",
-  "gemini-2.5-pro",
-  "gemini-2.5-flash",
-  "deepseek-r1",
-  "deepseek-v3",
-  "qwen-3-235b",
-  "llama-4-maverick"
-];
+// Global Cache for G4F Models
+let MODEL_CACHE = null;
+let CACHE_EXPIRY = 0;
+const CACHE_TTL_MS = 10 * 60 * 1000; // 10 minutes
+
+async function getAvailableModels(apiKey, log) {
+    if (MODEL_CACHE && Date.now() < CACHE_EXPIRY) {
+        return MODEL_CACHE;
+    }
+
+    try {
+        const response = await fetch("https://g4f.space/v1/models", {
+            headers: {
+                "Authorization": `Bearer ${apiKey}`
+            }
+        });
+
+        if (!response.ok) {
+            throw new Error(`Failed to fetch models, status: ${response.status}`);
+        }
+
+        const data = await response.json();
+        MODEL_CACHE = data.data || [];
+        CACHE_EXPIRY = Date.now() + CACHE_TTL_MS;
+        return MODEL_CACHE;
+    } catch (err) {
+        log(`Error fetching models for cache: ${err.message}`);
+        // If cache fetch fails, return previous cache if exists, otherwise empty array
+        return MODEL_CACHE || [];
+    }
+}
 
 export default async ({ req, res, log, error }) => {
     // 1. Initialize Appwrite Client
@@ -126,16 +144,17 @@ export default async ({ req, res, log, error }) => {
 
         // --- Handle Models Request ---
         if (action === 'models') {
+            const availableModels = await getAvailableModels(process.env.G4F_API_KEY, log);
             return res.json({
                 success: true,
-                models: MODEL_WHITELIST.map(id => ({ id, name: id }))
+                models: availableModels
             }, 200, corsHeaders);
         }
 
         // --- Handle Chat Request ---
         if (action === 'chat') {
             const messages = body.messages || [];
-            let requestedModel = body.model || 'gpt-4o'; // Default model
+            const requestedModel = body.model || 'gpt-4o'; // Default model
 
             // Quota check before request
             if (!userDoc.isAdmin && userDoc.tokenUsed >= TOKENS_PER_HOUR) {
@@ -143,22 +162,25 @@ export default async ({ req, res, log, error }) => {
             }
 
             try {
+                const validModels = await getAvailableModels(process.env.G4F_API_KEY, log);
                 console.log("Requested model:", requestedModel);
+                console.log("Available model count:", validModels.length);
 
-                let model = requestedModel;
-                if (!MODEL_WHITELIST.includes(requestedModel)) {
-                    console.log(`Invalid model ${requestedModel}, falling back to gpt-4o`);
-                    model = "gpt-4o";
+                const matchedModel = validModels.find(m => m.id === requestedModel);
+                console.log("Matched model:", matchedModel);
+
+                if (!matchedModel) {
+                    return res.json({
+                        success: false,
+                        error: "Invalid model",
+                        requestedModel: requestedModel
+                    }, 400, corsHeaders);
                 }
 
-                console.log("Final model:", model);
-
                 const g4fPayload = {
-                    model: model,
+                    model: requestedModel,
                     messages: messages
                 };
-
-                console.log(JSON.stringify(g4fPayload, null, 2));
 
                 // Call Official G4F API directly using fetch and secret API Key
                 const g4fRes = await fetch("https://g4f.space/v1/chat/completions", {
@@ -174,11 +196,11 @@ export default async ({ req, res, log, error }) => {
                     const errText = await g4fRes.text();
                     log(`G4F API Error: Status ${g4fRes.status}`);
                     log(`Response body: ${errText}`);
-                    log(`Selected model: ${model}`);
+                    log(`Selected model: ${requestedModel}`);
 
                     return res.json({
                         success: false,
-                        model: model,
+                        model: requestedModel,
                         status: g4fRes.status,
                         g4fError: errText
                     }, 500, corsHeaders);
