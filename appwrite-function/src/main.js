@@ -1,13 +1,6 @@
 import { Client, Databases, Query } from 'node-appwrite';
-import { G4F } from 'g4f';
+import fetch from 'node-fetch';
 
-// G4F initialization
-const g4f = new G4F();
-
-// Constants
-const DATABASE_ID = 'interlude_db'; // We'll need to define this, assuming standard name or from env
-const USERS_COLLECTION = 'users';
-const CODES_COLLECTION = 'codes';
 const TOKENS_PER_HOUR = 100000;
 
 export default async ({ req, res, log, error }) => {
@@ -19,10 +12,10 @@ export default async ({ req, res, log, error }) => {
 
     const databases = new Databases(client);
 
-    // Fallback DB IDs if not in env (would normally be in env vars for the function)
-    const dbId = process.env.DATABASE_ID || DATABASE_ID;
-    const usersCol = process.env.USERS_COLLECTION || USERS_COLLECTION;
-    const codesCol = process.env.CODES_COLLECTION || CODES_COLLECTION;
+    // Environment variables for DB and Collections (MUST NOT HARDCODE)
+    const dbId = process.env.DATABASE_ID;
+    const usersCol = process.env.USERS_TABLE_ID;
+    const codesCol = process.env.CODES_TABLE_ID;
 
     // Helper: Setup CORS
     const corsHeaders = {
@@ -64,8 +57,8 @@ export default async ({ req, res, log, error }) => {
             }
         } catch (e) {
             error("DB User fetch error:", e);
-            // If DB not setup perfectly yet, mock it to allow dev (remove in pure prod if DB is strict)
-            userDoc = { userId, tokenUsed: 0, windowStart: new Date().toISOString(), isAdmin: false, $id: 'mock' };
+            // CRITICAL FIX: No mock fallback allowed
+            return res.json({ error: "Database unavailable" }, 500, corsHeaders);
         }
 
         // --- Check and Reset Usage Window ---
@@ -77,12 +70,10 @@ export default async ({ req, res, log, error }) => {
             // Reset quota
             userDoc.tokenUsed = 0;
             userDoc.windowStart = now.toISOString();
-            if (userDoc.$id !== 'mock') {
-                await databases.updateDocument(dbId, usersCol, userDoc.$id, {
-                    tokenUsed: 0,
-                    windowStart: userDoc.windowStart
-                });
-            }
+            await databases.updateDocument(dbId, usersCol, userDoc.$id, {
+                tokenUsed: 0,
+                windowStart: userDoc.windowStart
+            });
         }
 
         // --- Handle Promo Code Activation ---
@@ -91,18 +82,16 @@ export default async ({ req, res, log, error }) => {
             try {
                 const codeDocs = await databases.listDocuments(dbId, codesCol, [
                     Query.equal('code', code),
-                    Query.equal('active', true)
+                    Query.equal('active', true),
+                    Query.equal('admin', true)
                 ]);
 
                 if (codeDocs.total > 0) {
-                    const codeData = codeDocs.documents[0];
-                    if (codeData.admin) {
-                        // Make user admin
-                        await databases.updateDocument(dbId, usersCol, userDoc.$id, {
-                            isAdmin: true
-                        });
-                        return res.json({ success: true, isAdmin: true, message: 'Admin access granted.' }, 200, corsHeaders);
-                    }
+                    // Make user admin permanently
+                    await databases.updateDocument(dbId, usersCol, userDoc.$id, {
+                        isAdmin: true
+                    });
+                    return res.json({ success: true, isAdmin: true, message: 'Admin access granted.' }, 200, corsHeaders);
                 }
                 return res.json({ success: false, message: 'Invalid or expired code.' }, 400, corsHeaders);
             } catch (e) {
@@ -126,90 +115,56 @@ export default async ({ req, res, log, error }) => {
             const messages = body.messages || [];
             const model = body.model || 'gpt-4o'; // Default model
 
-            // Rough token estimate (chars / 4)
-            const inputTokens = JSON.stringify(messages).length / 4;
-
-            // Quota check
-            if (!userDoc.isAdmin && (userDoc.tokenUsed + inputTokens) > TOKENS_PER_HOUR) {
+            // Quota check before request
+            if (!userDoc.isAdmin && userDoc.tokenUsed >= TOKENS_PER_HOUR) {
                 return res.json({ error: 'Hourly quota exceeded. Please wait or use a promo code.' }, 429, corsHeaders);
             }
 
-            // Note: True Server-Sent Events (SSE) streaming via Appwrite functions
-            // requires writing chunks directly to the response socket if supported,
-            // or returning a complete string if standard sync function.
-            // Appwrite Node.js functions support `res.send(body, status, headers)`
-            // For true SSE, we need to set headers appropriately. Appwrite 1.4+ supports streaming.
-
-            // For simplicity in this static analysis plan without knowing exact Appwrite runtime version,
-            // we will simulate the connection to G4F. Since G4F supports streaming:
-
-            const isStreaming = body.stream === true;
-
             try {
-                if (isStreaming) {
-                    // In Appwrite 1.4+, we can return a Node.js Readable stream or async generator.
-                    // We will use an async generator to stream chunks back to the client.
-                    const streamHeaders = {
-                        ...corsHeaders,
-                        'Content-Type': 'text/event-stream',
-                        'Cache-Control': 'no-cache',
-                        'Connection': 'keep-alive'
-                    };
-
-                    let fullOutput = "";
-
-                    // Assuming G4F supports returning an async iterable when stream: true
-                    const completionStream = await g4f.chatCompletion(messages, {
+                // Call Official G4F API directly using fetch and secret API Key
+                const g4fRes = await fetch("https://g4f.space/v1/chat/completions", {
+                    method: "POST",
+                    headers: {
+                        "Authorization": `Bearer ${process.env.G4F_API_KEY}`,
+                        "Content-Type": "application/json"
+                    },
+                    body: JSON.stringify({
                         model: model,
-                        stream: true
-                    });
+                        messages: messages,
+                        // Not streaming locally, as it's buffered by execution API
+                        stream: false
+                    })
+                });
 
-                    // We create an async generator that yields SSE formatted strings
-                    async function* sseGenerator() {
-                        try {
-                            for await (const chunk of completionStream) {
-                                // Extract text from chunk based on G4F stream format
-                                const text = chunk || "";
-                                fullOutput += text;
-                                yield `data: ${JSON.stringify({ content: text })}\n\n`;
-                            }
-                            // After streaming finishes, update the database token count
-                            const outputTokens = fullOutput.length / 4;
-                            const totalTokens = Math.floor(inputTokens + outputTokens);
-
-                            if (!userDoc.isAdmin && userDoc.$id !== 'mock') {
-                                await databases.updateDocument(dbId, usersCol, userDoc.$id, {
-                                    tokenUsed: userDoc.tokenUsed + totalTokens
-                                });
-                            }
-                            yield `data: [DONE]\n\n`;
-                        } catch (err) {
-                            error("Streaming error:", err);
-                            yield `data: ${JSON.stringify({ error: "Stream interrupted" })}\n\n`;
-                        }
-                    }
-
-                    // Appwrite res.send can take an async generator
-                    return res.send(sseGenerator(), 200, streamHeaders);
-
-                } else {
-                    const responseText = await g4f.chatCompletion(messages, {
-                        model: model
-                    });
-
-                    const outputTokens = responseText.length / 4;
-                    if (!userDoc.isAdmin && userDoc.$id !== 'mock') {
-                        await databases.updateDocument(dbId, usersCol, userDoc.$id, {
-                            tokenUsed: Math.floor(userDoc.tokenUsed + inputTokens + outputTokens)
-                        });
-                    }
-
-                    return res.json({ content: responseText }, 200, corsHeaders);
+                if (!g4fRes.ok) {
+                    const errText = await g4fRes.text();
+                    error("G4F API Error:", errText);
+                    return res.json({ error: 'Failed to generate response.' }, 500, corsHeaders);
                 }
 
+                const g4fData = await g4fRes.json();
+                const responseText = g4fData.choices[0].message.content;
+
+                // Real Token Tracking via API response if available, fallback to length estimate
+                let totalTokens = g4fData.usage?.total_tokens;
+                if (!totalTokens) {
+                   const inputLen = JSON.stringify(messages).length;
+                   const outputLen = responseText.length;
+                   totalTokens = Math.floor((inputLen + outputLen) / 4);
+                }
+
+                // Update tokens
+                if (!userDoc.isAdmin) {
+                    await databases.updateDocument(dbId, usersCol, userDoc.$id, {
+                        tokenUsed: userDoc.tokenUsed + totalTokens
+                    });
+                }
+
+                return res.json({ content: responseText }, 200, corsHeaders);
+
             } catch (chatError) {
-                error("G4F Error:", chatError);
-                return res.json({ error: 'Failed to generate response.' }, 500, corsHeaders);
+                error("G4F Request Exception:", chatError);
+                return res.json({ error: 'Failed to communicate with AI provider.' }, 500, corsHeaders);
             }
         }
 
