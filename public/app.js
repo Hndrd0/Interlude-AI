@@ -51,8 +51,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     initAppwrite();
     await authenticateAnonymously();
 
-    // We will initialize UI and App logic here in next steps
+    // Initialize UI and App logic once session is ready
     console.log("App initialized.");
+    await initUI();
 });
 
 // --- UI Elements ---
@@ -80,27 +81,17 @@ const themeRadios = document.querySelectorAll('input[name="theme"]');
 let chats = JSON.parse(localStorage.getItem('interlude_chats')) || [];
 let activeChatId = null;
 let currentModelId = localStorage.getItem('interlude_model') || 'gpt-4o';
-
-const MODELS = [
-    { id: 'gpt-5', name: 'GPT-5', provider: 'OpenAI' },
-    { id: 'gpt-4.1', name: 'GPT-4.1', provider: 'OpenAI' },
-    { id: 'gpt-4o', name: 'GPT-4o', provider: 'OpenAI' },
-    { id: 'claude-sonnet-4', name: 'Claude Sonnet 4', provider: 'Anthropic' },
-    { id: 'claude-opus-4', name: 'Claude Opus 4', provider: 'Anthropic' },
-    { id: 'gemini-2.5-pro', name: 'Gemini 2.5 Pro', provider: 'Google' },
-    { id: 'gemini-2.5-flash', name: 'Gemini 2.5 Flash', provider: 'Google' },
-    { id: 'deepseek-r1', name: 'DeepSeek R1', provider: 'DeepSeek' },
-    { id: 'deepseek-v3', name: 'DeepSeek V3', provider: 'DeepSeek' },
-    { id: 'qwen-3-235b', name: 'Qwen-3 235B', provider: 'Alibaba' },
-    { id: 'llama-4-maverick', name: 'Llama 4 Maverick', provider: 'Meta' }
-];
+let availableModels = [];
 
 // --- Initialization Logic ---
-function initUI() {
+async function initUI() {
     renderChatList();
-    renderModelPicker();
     applyTheme(localStorage.getItem('interlude_theme') || 'dark');
     setupEventListeners();
+
+    // Fetch available models before rendering picker
+    await fetchAvailableModels();
+    renderModelPicker();
 
     // Auto-select latest chat or show new chat state
     if (chats.length > 0) {
@@ -173,32 +164,49 @@ function renderChatList() {
     });
 }
 
-function renderMessages(messages) {
-    chatMessagesArea.innerHTML = '';
-    messages.forEach(msg => {
-        // Will implement actual DOM construction in next step for message rendering
-        const div = document.createElement('div');
-        div.className = `message-wrapper ${msg.role}`;
-        div.innerHTML = `<div class="message">${msg.content}</div>`;
-        chatMessagesArea.appendChild(div);
-    });
-    scrollToBottom();
-}
-
 function scrollToBottom() {
     const scrollContainer = document.getElementById('chat-scroll-container');
     scrollContainer.scrollTop = scrollContainer.scrollHeight;
 }
 
 // --- Models Picker ---
+async function fetchAvailableModels() {
+    try {
+        const execution = await appwriteFunctions.createExecution(
+            APPWRITE_FUNCTION_ID,
+            JSON.stringify({ action: 'models', userId: currentUserId }),
+            false,
+            '/',
+            'POST'
+        );
+        const result = JSON.parse(execution.responseBody);
+        if (result.success && result.models) {
+            // Sort models by name for better UX
+            availableModels = result.models.sort((a, b) => a.name.localeCompare(b.name));
+
+            // Validate currentModelId
+            if (availableModels.length > 0 && !availableModels.some(m => m.id === currentModelId)) {
+                currentModelId = 'gpt-4o'; // fallback
+                localStorage.setItem('interlude_model', currentModelId);
+            }
+        }
+    } catch (e) {
+        console.error("Failed to fetch models:", e);
+        // Fallback array if totally offline/failing
+        availableModels = [{ id: 'gpt-4o', name: 'GPT-4o (Fallback)', provider: 'OpenAI' }];
+    }
+}
+
 function renderModelPicker() {
     const list = modelPopup.querySelector('.model-list');
     list.innerHTML = '';
 
-    let currentModel = MODELS.find(m => m.id === currentModelId) || MODELS[2];
+    if (availableModels.length === 0) return;
+
+    let currentModel = availableModels.find(m => m.id === currentModelId) || availableModels.find(m => m.id === 'gpt-4o') || availableModels[0];
     currentModelNameEl.textContent = currentModel.name;
 
-    MODELS.forEach(model => {
+    availableModels.forEach(model => {
         const option = document.createElement('div');
         option.className = `model-option ${model.id === currentModelId ? 'selected' : ''}`;
         option.onclick = () => {
@@ -212,7 +220,7 @@ function renderModelPicker() {
         option.innerHTML = `
             <div class="model-info">
                 <span class="model-name">${model.name}</span>
-                <span class="model-provider">${model.provider}</span>
+                <span class="model-provider">${model.provider || 'Provider'}</span>
             </div>
             <div class="model-check">✓</div>
         `;
@@ -299,13 +307,6 @@ function setupEventListeners() {
     openArtifactsBtn.addEventListener('click', () => artifactsPanel.classList.add('open'));
     closeArtifactsBtn.addEventListener('click', () => artifactsPanel.classList.remove('open'));
 }
-
-// Hook initialization into the load event
-const origLoad = window.onload;
-window.onload = function() {
-    if(origLoad) origLoad();
-    initUI();
-};
 
 // --- Message Rendering & Processing ---
 function processArtifacts(content) {
