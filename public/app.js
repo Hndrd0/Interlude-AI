@@ -452,97 +452,33 @@ async function sendMessage(text) {
             action: 'chat',
             userId: currentUserId,
             model: currentModelId,
-            messages: chat.messages.map(m => ({ role: m.role, content: m.content })),
-            stream: true
+            messages: chat.messages.map(m => ({ role: m.role, content: m.content }))
         };
 
-        // Call Appwrite Function via POST request directly to the API endpoint
-        // Appwrite Web SDK Execution doesn't support reading raw streams natively,
-        // so we use standard fetch against the function execution URL if possible,
-        // OR rely on standard SDK execution which handles JSON nicely.
-        // Given we need true SSE streaming token-by-token:
+        // Use standard Appwrite SDK execution to await the full buffered response
+        const execution = await appwriteFunctions.createExecution(
+            APPWRITE_FUNCTION_ID,
+            JSON.stringify(payload),
+            false, // sync execution to get the response body
+            '/',
+            'POST'
+        );
 
-        // We build the API execution URL manually to use fetch for SSE
-        const functionUrl = `${APPWRITE_ENDPOINT}/functions/${APPWRITE_FUNCTION_ID}/executions`;
-
-        // Alternatively, since Appwrite executions return JSON with stdout/stderr,
-        // streaming via Appwrite SDK currently requires writing data to the socket
-        // which might be buffered by the Appwrite runtime.
-        // We will simulate the streaming locally here for the sake of the UX if the SDK buffers it,
-        // but try to use fetch to read the stream.
-
-        const response = await fetch(functionUrl, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-Appwrite-Project': APPWRITE_PROJECT
-            },
-            body: JSON.stringify({
-                data: JSON.stringify(payload)
-            }),
-            signal: abortController.signal
-        });
-
-        if (!response.ok) {
-            throw new Error(`HTTP error! status: ${response.status}`);
+        if (execution.status === 'failed') {
+            throw new Error("Backend execution failed");
         }
 
-        // Appwrite execution wraps the result. If the backend actually uses Server-Sent Events,
-        // it might return in `responseBody` field of the execution document if sync.
-        // For true streaming from Appwrite Function to client, the Function needs to be accessed
-        // via the generic domain or the client needs to read the execution stream if supported.
+        const result = JSON.parse(execution.responseBody);
 
-        // Given the constraints, we will extract the result.
-        // If the backend was a standard endpoint, we'd do standard SSE parsing here.
-        // Let's assume standard SSE parsing via fetch response stream:
-        const reader = response.body.getReader();
-        const decoder = new TextDecoder("utf-8");
-
-        while (true) {
-            const { done, value } = await reader.read();
-            if (done) break;
-
-            const chunk = decoder.decode(value, { stream: true });
-
-            // The chunk might be wrapped by Appwrite execution response format first if not using direct domain.
-            // Assuming we use direct domain or Appwrite transparently proxies:
-            const lines = chunk.split('\n');
-
-            for (const line of lines) {
-                if (line.startsWith('data: ')) {
-                    const dataStr = line.replace('data: ', '').trim();
-                    if (dataStr === '[DONE]') break;
-
-                    try {
-                        // Note: Appwrite execution wrapping might return the whole SSE payload as a single JSON string in stdout.
-                        // We will try parsing it as JSON first (if it's an execution response)
-                        let parsedData;
-                        try {
-                            const executionRes = JSON.parse(dataStr);
-                            if(executionRes.responseBody) {
-                                // It was an execution object
-                                // Process the inner string
-                                const innerData = executionRes.responseBody;
-                                // Simplified for this static demo to just append what we can parse
-                                assistantFullText += innerData;
-                            } else if (executionRes.content) {
-                                parsedData = executionRes;
-                                assistantFullText += parsedData.content;
-                            }
-                        } catch(e) {
-                           // Try raw string parsing if it wasn't valid json
-                           assistantFullText += dataStr;
-                        }
-
-                        // Incrementally update UI
-                        messageContentDiv.innerHTML = DOMPurify.sanitize(marked.parse(processArtifacts(assistantFullText)));
-                        scrollToBottom();
-                    } catch (err) {
-                        console.error("Error parsing stream chunk", err);
-                    }
-                }
-            }
+        if (result.error) {
+            throw new Error(result.error);
         }
+
+        assistantFullText = result.content;
+
+        // Render the final message
+        messageContentDiv.innerHTML = DOMPurify.sanitize(marked.parse(processArtifacts(assistantFullText)));
+        scrollToBottom();
 
     } catch (err) {
         if (err.name === 'AbortError') {
