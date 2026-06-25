@@ -110,10 +110,25 @@ export default async ({ req, res, log, error }) => {
             }, 200, corsHeaders);
         }
 
+        // --- Handle Models Request ---
+        if (action === 'models') {
+            try {
+                const modelsRes = await fetch("https://g4f.space/v1/models");
+                if (!modelsRes.ok) {
+                    throw new Error(`Failed to fetch models: ${modelsRes.status}`);
+                }
+                const modelsData = await modelsRes.json();
+                return res.json({ success: true, models: modelsData.data }, 200, corsHeaders);
+            } catch (err) {
+                error("Error fetching models:", err);
+                return res.json({ error: "Failed to fetch available models" }, 500, corsHeaders);
+            }
+        }
+
         // --- Handle Chat Request ---
         if (action === 'chat') {
             const messages = body.messages || [];
-            const model = body.model || 'gpt-4o'; // Default model
+            let requestedModel = body.model || 'gpt-4o'; // Default model
 
             // Quota check before request
             if (!userDoc.isAdmin && userDoc.tokenUsed >= TOKENS_PER_HOUR) {
@@ -121,6 +136,23 @@ export default async ({ req, res, log, error }) => {
             }
 
             try {
+                // Fetch dynamic whitelist
+                const modelsRes = await fetch("https://g4f.space/v1/models");
+                let validModels = [];
+                if (modelsRes.ok) {
+                    const modelsData = await modelsRes.json();
+                    validModels = modelsData.data || [];
+                }
+
+                // Fallback validation
+                const isModelValid = validModels.some(m => m.id === requestedModel);
+                if (validModels.length > 0 && !isModelValid) {
+                    console.log(`Invalid model ${requestedModel}, falling back to gpt-4o`);
+                    requestedModel = 'gpt-4o';
+                }
+
+                console.log("Requested model:", requestedModel);
+
                 // Call Official G4F API directly using fetch and secret API Key
                 const g4fRes = await fetch("https://g4f.space/v1/chat/completions", {
                     method: "POST",
@@ -129,17 +161,19 @@ export default async ({ req, res, log, error }) => {
                         "Content-Type": "application/json"
                     },
                     body: JSON.stringify({
-                        model: model,
-                        messages: messages,
-                        // Not streaming locally, as it's buffered by execution API
-                        stream: false
+                        model: requestedModel,
+                        messages: messages
                     })
                 });
 
                 if (!g4fRes.ok) {
                     const errText = await g4fRes.text();
                     error("G4F API Error:", errText);
-                    return res.json({ error: 'Failed to generate response.' }, 500, corsHeaders);
+                    return res.json({
+                        success: false,
+                        model: requestedModel,
+                        g4fError: errText
+                    }, 500, corsHeaders);
                 }
 
                 const g4fData = await g4fRes.json();
