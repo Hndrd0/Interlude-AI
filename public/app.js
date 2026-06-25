@@ -312,21 +312,20 @@ function setupEventListeners() {
 function processArtifacts(content) {
     // Look for code blocks that might be artifacts
     const artifactRegex = /```(html|javascript|css|python)\n([\s\S]*?)```/g;
-    let newContent = content;
-    let match;
     let artifactCounter = 1;
 
-    while ((match = artifactRegex.exec(content)) !== null) {
-        const lang = match[1];
-        const code = match[2];
+    // Use a replacer function to avoid replacing only the first occurrence
+    // and correctly handle identical code blocks.
+    const newContent = content.replace(artifactRegex, (match, lang, code) => {
         const id = `artifact-${Date.now()}-${artifactCounter++}`;
 
         // Save full code to a global object to easily retrieve it later
         window.appArtifacts = window.appArtifacts || {};
         window.appArtifacts[id] = { lang, code };
 
+        // Remove inline onclick to comply with DOMPurify. Event delegation handles the click.
         const artifactHtml = `
-            <div class="artifact-card" onclick="openArtifact('${id}')">
+            <div class="artifact-card artifact-trigger" data-id="${id}">
                 <div class="artifact-info">
                     <span class="artifact-icon">✨</span>
                     <span class="artifact-title">Artifact (${lang})</span>
@@ -334,13 +333,22 @@ function processArtifacts(content) {
                 <div>Click to view</div>
             </div>
         `;
-        // We do not replace the actual code block entirely for marked to still parse it,
-        // but we prepend an interactive card before the block
-        newContent = newContent.replace(match[0], artifactHtml + '\n' + match[0]);
-    }
+        return artifactHtml + '\n' + match;
+    });
 
     return newContent;
 }
+
+// Set up event delegation for artifact cards
+chatMessagesArea.addEventListener('click', (e) => {
+    const trigger = e.target.closest('.artifact-trigger');
+    if (trigger) {
+        const id = trigger.dataset.id;
+        if (id) {
+            window.openArtifact(id);
+        }
+    }
+});
 
 window.openArtifact = function(id) {
     const artifact = window.appArtifacts[id];
@@ -465,12 +473,29 @@ async function sendMessage(text) {
             'POST'
         );
 
-        if (execution.status === 'failed') {
-            throw new Error("Backend execution failed");
+        let result;
+        try {
+            result = JSON.parse(execution.responseBody);
+        } catch (parseError) {
+            console.error("Failed to parse execution response:", execution.responseBody);
+            throw new Error("Invalid response from server");
         }
 
-        const result = JSON.parse(execution.responseBody);
+        // Appwrite marks executions as 'failed' if the function throws or returns an error status code.
+        // However, our function returns a structured JSON payload even on failures.
+        if (execution.status === 'failed') {
+            if (result && result.error) {
+                // If it's a known error from our backend (e.g. quota, DB error)
+                throw new Error(result.error);
+            } else if (result && result.g4fError) {
+                // Specific G4F API error
+                throw new Error(`G4F Error: ${result.g4fError}`);
+            } else {
+                throw new Error("Backend execution failed");
+            }
+        }
 
+        // Sometimes status is not marked failed, but the payload has an error.
         if (result.error) {
             throw new Error(result.error);
         }
