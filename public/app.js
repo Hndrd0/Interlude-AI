@@ -487,11 +487,20 @@ async function sendMessage(text) {
             'POST'
         );
 
+        console.log(execution);
+        console.log(execution.responseBody);
+        console.log(execution.status);
+        console.log(execution.responseStatusCode);
+
+        if (!execution.responseBody) {
+            throw new Error("Function returned an empty responseBody");
+        }
+
         let result;
         try {
             result = JSON.parse(execution.responseBody);
         } catch (parseError) {
-            console.error("Failed to parse execution response:", execution.responseBody);
+            console.error("Raw responseBody:", execution.responseBody);
             throw new Error("Invalid response from server");
         }
 
