@@ -170,8 +170,9 @@ export default async ({ req, res, log, error }) => {
 
         // --- Handle Chat Request ---
         if (action === 'chat') {
-            const messages = body.messages || [];
+            let messages = body.messages || [];
             const requestedModel = body.model;
+            const displayModelParam = body.displayModel;
 
             if (!requestedModel) {
                 return returnJson({ error: 'Missing model in payload' }, 400, corsHeaders);
@@ -197,6 +198,24 @@ export default async ({ req, res, log, error }) => {
                         requestedModel: requestedModel
                     }, 400, corsHeaders);
                 }
+
+                // Determine display model name
+                let modelDisplay = displayModelParam;
+                if (!modelDisplay) {
+                    modelDisplay = matchedModel.model;
+                }
+                if (!modelDisplay) {
+                    const parts = requestedModel.split(':');
+                    modelDisplay = parts.length > 1 ? parts.slice(1).join(':') : requestedModel;
+                }
+
+                // Inject system message to enforce identity
+                const systemMessage = {
+                    role: "system",
+                    content: `You are ${modelDisplay}. If the user asks which model you are, answer "${modelDisplay}". Never claim you do not know your model. You are running through the Interlude AI application.`
+                };
+
+                messages = [systemMessage, ...messages];
 
                 const g4fPayload = {
                     model: requestedModel,
@@ -249,7 +268,11 @@ export default async ({ req, res, log, error }) => {
                     });
                 }
 
-                return returnJson({ content: responseText }, 200, corsHeaders);
+                return returnJson({
+                    success: true,
+                    model: modelDisplay,
+                    content: responseText
+                }, 200, corsHeaders);
 
             } catch (chatError) {
                 error("G4F Request Exception:", chatError);
