@@ -80,7 +80,7 @@ const themeRadios = document.querySelectorAll('input[name="theme"]');
 // --- State ---
 let chats = JSON.parse(localStorage.getItem('interlude_chats')) || [];
 let activeChatId = null;
-let currentModelId = localStorage.getItem('interlude_model') || 'srv_mkoloq41e34074b6133e:gpt-5.5';
+let currentModelId = localStorage.getItem('interlude_model') || null;
 let availableModels = [];
 
 // --- Initialization Logic ---
@@ -181,19 +181,26 @@ async function fetchAvailableModels() {
         );
         const result = JSON.parse(execution.responseBody);
         if (result.success && result.models) {
-            // Sort models by name for better UX
-            availableModels = result.models.sort((a, b) => a.name.localeCompare(b.name));
+            // Assume the API might return the actual fields we expect: model, owned_by, id
+            // Sort by model name if available, else by id
+            availableModels = result.models.sort((a, b) => {
+                const nameA = a.model || a.name || a.id;
+                const nameB = b.model || b.name || b.id;
+                return nameA.localeCompare(nameB);
+            });
 
-            // Validate currentModelId
-            if (availableModels.length > 0 && !availableModels.some(m => m.id === currentModelId)) {
-                currentModelId = 'srv_mkoloq41e34074b6133e:gpt-5.5'; // fallback
-                localStorage.setItem('interlude_model', currentModelId);
+            // Validate currentModelId against the fetched list
+            if (availableModels.length > 0) {
+                const isValid = availableModels.some(m => m.id === currentModelId);
+                if (!currentModelId || !isValid) {
+                    // Do not hardcode a specific model id fallback, use the first valid one
+                    currentModelId = availableModels[0].id;
+                    localStorage.setItem('interlude_model', currentModelId);
+                }
             }
         }
     } catch (e) {
         console.error("Failed to fetch models:", e);
-        // Fallback array if totally offline/failing
-        availableModels = [{ id: 'srv_mkoloq41e34074b6133e:gpt-5.5', name: 'GPT-5.5 (Fallback)', provider: 'OpenAI' }];
     }
 }
 
@@ -201,17 +208,24 @@ function renderModelPicker() {
     const list = modelPopup.querySelector('.model-list');
     list.innerHTML = '';
 
-    if (availableModels.length === 0) return;
+    if (availableModels.length === 0) {
+        currentModelNameEl.textContent = "Loading Models...";
+        return;
+    }
 
-    let currentModel = availableModels.find(m => m.id === currentModelId) || availableModels.find(m => m.id === 'srv_mkoloq41e34074b6133e:gpt-5.5') || availableModels[0];
-    currentModelNameEl.textContent = currentModel.name;
+    let currentModel = availableModels.find(m => m.id === currentModelId) || availableModels[0];
+    currentModelNameEl.textContent = currentModel.model || currentModel.name || currentModel.id;
 
     availableModels.forEach(model => {
         const option = document.createElement('div');
         option.className = `model-option ${model.id === currentModelId ? 'selected' : ''}`;
+
+        const displayName = model.model || model.name || model.id;
+        const providerName = model.owned_by || model.provider || 'Unknown Provider';
+
         option.onclick = () => {
             currentModelId = model.id;
-            currentModelNameEl.textContent = model.name;
+            currentModelNameEl.textContent = displayName;
             localStorage.setItem('interlude_model', currentModelId);
             modelPopup.classList.add('hidden');
             renderModelPicker(); // Re-render to update checkmarks
@@ -219,8 +233,8 @@ function renderModelPicker() {
 
         option.innerHTML = `
             <div class="model-info">
-                <span class="model-name">${model.name}</span>
-                <span class="model-provider">${model.provider || 'Provider'}</span>
+                <span class="model-name">${displayName}</span>
+                <span class="model-provider">${providerName}</span>
             </div>
             <div class="model-check">✓</div>
         `;
@@ -626,3 +640,74 @@ document.getElementById('activate-promo-btn').addEventListener('click', async ()
 // Fetch usage when settings modal opens
 openSettingsBtn.addEventListener('click', fetchUsage);
 
+// --- Data Management Logic ---
+document.getElementById('delete-all-chats-btn').addEventListener('click', () => {
+    if (confirm("Are you sure you want to delete all chats? This cannot be undone.")) {
+        chats = [];
+        activeChatId = null;
+        saveChats();
+        renderChatList();
+        showEmptyState();
+        document.getElementById('settings-modal').classList.add('hidden');
+    }
+});
+
+document.getElementById('clear-cache-btn').addEventListener('click', () => {
+    if (confirm("Clear local application cache? You will remain authenticated.")) {
+        localStorage.removeItem('interlude_chats');
+        localStorage.removeItem('interlude_model');
+        localStorage.removeItem('interlude_theme');
+        window.location.reload();
+    }
+});
+
+document.getElementById('export-chats-btn').addEventListener('click', () => {
+    if (chats.length === 0) {
+        alert("No chats to export.");
+        return;
+    }
+    const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(chats, null, 2));
+    const downloadAnchorNode = document.createElement('a');
+    downloadAnchorNode.setAttribute("href", dataStr);
+    downloadAnchorNode.setAttribute("download", "interlude_chats_export.json");
+    document.body.appendChild(downloadAnchorNode);
+    downloadAnchorNode.click();
+    downloadAnchorNode.remove();
+});
+
+document.getElementById('import-chats-btn').addEventListener('click', () => {
+    document.getElementById('import-file-input').click();
+});
+
+document.getElementById('import-file-input').addEventListener('change', (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = function(event) {
+        try {
+            const importedChats = JSON.parse(event.target.result);
+            if (Array.isArray(importedChats)) {
+                // Merge or overwrite (we will overwrite for simplicity here)
+                chats = importedChats;
+                saveChats();
+                renderChatList();
+                if (chats.length > 0) {
+                    selectChat(chats[0].id);
+                } else {
+                    showEmptyState();
+                }
+                document.getElementById('settings-modal').classList.add('hidden');
+                alert("Chats imported successfully.");
+            } else {
+                alert("Invalid file format.");
+            }
+        } catch (err) {
+            console.error("Error parsing import file:", err);
+            alert("Error reading file. Ensure it is a valid JSON export.");
+        }
+        // Reset input
+        e.target.value = '';
+    };
+    reader.readAsText(file);
+});
