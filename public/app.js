@@ -181,19 +181,41 @@ async function fetchAvailableModels() {
         );
         const result = JSON.parse(execution.responseBody);
         if (result.success && result.models) {
-            // Assume the API might return the actual fields we expect: model, owned_by, id
-            // Sort by model name if available, else by id
-            availableModels = result.models.sort((a, b) => {
-                const nameA = a.model || a.name || a.id;
-                const nameB = b.model || b.name || b.id;
-                return nameA.localeCompare(nameB);
+
+            // Deduplicate and extract friendly display names
+            const modelMap = new Map();
+
+            result.models.forEach(model => {
+                let displayName = model.model;
+                if (!displayName && model.id) {
+                    const parts = model.id.split(':');
+                    displayName = parts.length > 1 ? parts.slice(1).join(':') : model.id;
+                }
+                if (!displayName) return;
+
+                model.displayName = displayName;
+
+                const existing = modelMap.get(displayName);
+                if (!existing) {
+                    modelMap.set(displayName, model);
+                } else {
+                    const reqA = parseInt(existing.requests) || 0;
+                    const reqB = parseInt(model.requests) || 0;
+                    if (reqB > reqA) {
+                        modelMap.set(displayName, model);
+                    }
+                }
+            });
+
+            // Convert to array and sort alphabetically by displayName
+            availableModels = Array.from(modelMap.values()).sort((a, b) => {
+                return a.displayName.localeCompare(b.displayName);
             });
 
             // Validate currentModelId against the fetched list
             if (availableModels.length > 0) {
                 const isValid = availableModels.some(m => m.id === currentModelId);
                 if (!currentModelId || !isValid) {
-                    // Do not hardcode a specific model id fallback, use the first valid one
                     currentModelId = availableModels[0].id;
                     localStorage.setItem('interlude_model', currentModelId);
                 }
@@ -214,18 +236,15 @@ function renderModelPicker() {
     }
 
     let currentModel = availableModels.find(m => m.id === currentModelId) || availableModels[0];
-    currentModelNameEl.textContent = currentModel.model || currentModel.name || currentModel.id;
+    currentModelNameEl.textContent = currentModel.displayName;
 
     availableModels.forEach(model => {
         const option = document.createElement('div');
         option.className = `model-option ${model.id === currentModelId ? 'selected' : ''}`;
 
-        const displayName = model.model || model.name || model.id;
-        const providerName = model.owned_by || model.provider || 'Unknown Provider';
-
         option.onclick = () => {
             currentModelId = model.id;
-            currentModelNameEl.textContent = displayName;
+            currentModelNameEl.textContent = model.displayName;
             localStorage.setItem('interlude_model', currentModelId);
             modelPopup.classList.add('hidden');
             renderModelPicker(); // Re-render to update checkmarks
@@ -233,8 +252,7 @@ function renderModelPicker() {
 
         option.innerHTML = `
             <div class="model-info">
-                <span class="model-name">${displayName}</span>
-                <span class="model-provider">${providerName}</span>
+                <span class="model-name">${model.displayName}</span>
             </div>
             <div class="model-check">✓</div>
         `;
@@ -471,10 +489,14 @@ async function sendMessage(text) {
     let assistantFullText = '';
 
     try {
+        const selectedModelObj = availableModels.find(m => m.id === currentModelId) || availableModels[0] || {};
+        const displayModel = selectedModelObj.displayName || 'Unknown Model';
+
         const payload = {
             action: 'chat',
             userId: currentUserId,
             model: currentModelId,
+            displayModel: displayModel,
             messages: chat.messages.map(m => ({ role: m.role, content: m.content }))
         };
 
