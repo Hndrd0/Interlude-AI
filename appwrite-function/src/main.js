@@ -36,6 +36,14 @@ async function getAvailableModels(apiKey, log) {
 }
 
 export default async ({ req, res, log, error }) => {
+    console.log("Incoming body:", req.body);
+
+    // Helper to log all returns
+    const returnJson = (obj, status, headers) => {
+        console.log("Returning:", JSON.stringify(obj));
+        return res.json(obj, status, headers);
+    };
+
     // 1. Initialize Appwrite Client
     const client = new Client()
         .setEndpoint('https://sgp.cloud.appwrite.io/v1')
@@ -66,7 +74,7 @@ export default async ({ req, res, log, error }) => {
         const userId = req.headers['x-appwrite-user-id'] || body.userId; // Get user ID from request
 
         if (!userId) {
-            return res.json({ error: 'Missing User ID' }, 401, corsHeaders);
+            return returnJson({ error: 'Missing User ID' }, 401, corsHeaders);
         }
 
         // --- Fetch or Create User Document ---
@@ -90,7 +98,7 @@ export default async ({ req, res, log, error }) => {
         } catch (e) {
             error("DB User fetch error:", e);
             // CRITICAL FIX: No mock fallback allowed
-            return res.json({ error: "Database unavailable" }, 500, corsHeaders);
+            return returnJson({ error: "Database unavailable" }, 500, corsHeaders);
         }
 
         // --- Check and Reset Usage Window ---
@@ -123,18 +131,18 @@ export default async ({ req, res, log, error }) => {
                     await databases.updateDocument(dbId, usersCol, userDoc.$id, {
                         isAdmin: true
                     });
-                    return res.json({ success: true, isAdmin: true, message: 'Admin access granted.' }, 200, corsHeaders);
+                    return returnJson({ success: true, isAdmin: true, message: 'Admin access granted.' }, 200, corsHeaders);
                 }
-                return res.json({ success: false, message: 'Invalid or expired code.' }, 400, corsHeaders);
+                return returnJson({ success: false, message: 'Invalid or expired code.' }, 400, corsHeaders);
             } catch (e) {
                 error("Promo code check error:", e);
-                return res.json({ success: false, message: 'Database error checking code.' }, 500, corsHeaders);
+                return returnJson({ success: false, message: 'Database error checking code.' }, 500, corsHeaders);
             }
         }
 
         // --- Handle Usage Stats Request ---
         if (action === 'get_usage') {
-            return res.json({
+            return returnJson({
                 tokenUsed: userDoc.tokenUsed,
                 limit: TOKENS_PER_HOUR,
                 isAdmin: userDoc.isAdmin,
@@ -145,7 +153,7 @@ export default async ({ req, res, log, error }) => {
         // --- Handle Models Request ---
         if (action === 'models') {
             const availableModels = await getAvailableModels(process.env.G4F_API_KEY, log);
-            return res.json({
+            return returnJson({
                 success: true,
                 models: availableModels
             }, 200, corsHeaders);
@@ -154,7 +162,7 @@ export default async ({ req, res, log, error }) => {
         // --- Handle Debug Models Request ---
         if (action === 'debug_models') {
             const availableModels = await getAvailableModels(process.env.G4F_API_KEY, log);
-            return res.json({
+            return returnJson({
                 count: availableModels.length,
                 models: availableModels
             }, 200, corsHeaders);
@@ -166,12 +174,12 @@ export default async ({ req, res, log, error }) => {
             const requestedModel = body.model;
 
             if (!requestedModel) {
-                return res.json({ error: 'Missing model in payload' }, 400, corsHeaders);
+                return returnJson({ error: 'Missing model in payload' }, 400, corsHeaders);
             }
 
             // Quota check before request
             if (!userDoc.isAdmin && userDoc.tokenUsed >= TOKENS_PER_HOUR) {
-                return res.json({ error: 'Hourly quota exceeded. Please wait or use a promo code.' }, 429, corsHeaders);
+                return returnJson({ error: 'Hourly quota exceeded. Please wait or use a promo code.' }, 429, corsHeaders);
             }
 
             try {
@@ -183,7 +191,7 @@ export default async ({ req, res, log, error }) => {
                 console.log("Matched model:", matchedModel);
 
                 if (!matchedModel) {
-                    return res.json({
+                    return returnJson({
                         success: false,
                         error: "Invalid model",
                         requestedModel: requestedModel
@@ -215,7 +223,7 @@ export default async ({ req, res, log, error }) => {
                     log(`Response body: ${errText}`);
                     log(`Selected model: ${requestedModel}`);
 
-                    return res.json({
+                    return returnJson({
                         success: false,
                         model: requestedModel,
                         status: g4fRes.status,
@@ -241,18 +249,22 @@ export default async ({ req, res, log, error }) => {
                     });
                 }
 
-                return res.json({ content: responseText }, 200, corsHeaders);
+                return returnJson({ content: responseText }, 200, corsHeaders);
 
             } catch (chatError) {
                 error("G4F Request Exception:", chatError);
-                return res.json({ error: 'Failed to communicate with AI provider.' }, 500, corsHeaders);
+                return returnJson({ error: 'Failed to communicate with AI provider.' }, 500, corsHeaders);
             }
         }
 
-        return res.json({ error: 'Invalid action' }, 400, corsHeaders);
+        return returnJson({ error: 'Invalid action' }, 400, corsHeaders);
 
     } catch (e) {
-        error("General function error:", e);
-        return res.json({ error: 'Internal Server Error' }, 500, corsHeaders);
+        console.error(e);
+        return returnJson({
+            success: false,
+            error: e.message,
+            stack: e.stack
+        }, 500, corsHeaders);
     }
 };
