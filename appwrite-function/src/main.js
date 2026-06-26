@@ -151,10 +151,23 @@ export default async ({ req, res, log, error }) => {
             }, 200, corsHeaders);
         }
 
+        // --- Handle Debug Models Request ---
+        if (action === 'debug_models') {
+            const availableModels = await getAvailableModels(process.env.G4F_API_KEY, log);
+            return res.json({
+                count: availableModels.length,
+                models: availableModels
+            }, 200, corsHeaders);
+        }
+
         // --- Handle Chat Request ---
         if (action === 'chat') {
             const messages = body.messages || [];
-            const requestedModel = body.model || 'gpt-4o'; // Default model
+            const requestedModel = body.model;
+
+            if (!requestedModel) {
+                return res.json({ error: 'Missing model in payload' }, 400, corsHeaders);
+            }
 
             // Quota check before request
             if (!userDoc.isAdmin && userDoc.tokenUsed >= TOKENS_PER_HOUR) {
@@ -182,6 +195,9 @@ export default async ({ req, res, log, error }) => {
                     messages: messages
                 };
 
+                console.log("Payload:");
+                console.log(JSON.stringify(g4fPayload, null, 2));
+
                 // Call Official G4F API directly using fetch and secret API Key
                 const g4fRes = await fetch("https://g4f.space/v1/chat/completions", {
                     method: "POST",
@@ -195,6 +211,7 @@ export default async ({ req, res, log, error }) => {
                 if (!g4fRes.ok) {
                     const errText = await g4fRes.text();
                     log(`G4F API Error: Status ${g4fRes.status}`);
+                    log(`Response headers: ${JSON.stringify(Object.fromEntries(g4fRes.headers.entries()))}`);
                     log(`Response body: ${errText}`);
                     log(`Selected model: ${requestedModel}`);
 

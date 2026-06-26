@@ -80,7 +80,7 @@ const themeRadios = document.querySelectorAll('input[name="theme"]');
 // --- State ---
 let chats = JSON.parse(localStorage.getItem('interlude_chats')) || [];
 let activeChatId = null;
-let currentModelId = localStorage.getItem('interlude_model') || 'gpt-4o';
+let currentModelId = localStorage.getItem('interlude_model') || null;
 let availableModels = [];
 
 // --- Initialization Logic ---
@@ -190,10 +190,13 @@ async function fetchAvailableModels() {
             });
 
             // Validate currentModelId against the fetched list
-            if (availableModels.length > 0 && !availableModels.some(m => m.id === currentModelId)) {
-                // Do not hardcode a specific model id fallback, use the first valid one
-                currentModelId = availableModels[0].id;
-                localStorage.setItem('interlude_model', currentModelId);
+            if (availableModels.length > 0) {
+                const isValid = availableModels.some(m => m.id === currentModelId);
+                if (!currentModelId || !isValid) {
+                    // Do not hardcode a specific model id fallback, use the first valid one
+                    currentModelId = availableModels[0].id;
+                    localStorage.setItem('interlude_model', currentModelId);
+                }
             }
         }
     } catch (e) {
