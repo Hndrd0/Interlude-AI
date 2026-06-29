@@ -3,36 +3,19 @@ import fetch from 'node-fetch';
 
 const TOKENS_PER_HOUR = 100000;
 
-// Global Cache for G4F Models
-let MODEL_CACHE = null;
-let CACHE_EXPIRY = 0;
-const CACHE_TTL_MS = 10 * 60 * 1000; // 10 minutes
+const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
+const MISTRAL_API_KEY = process.env.MISTRAL_API_KEY || "hy44OQBTAAK4nOcIIJSJRHqbaUBkBbWB";
+
+const AVAILABLE_MODELS = [
+    { id: 'gemini-1.5-flash', model: 'Gemini 1.5 Flash' },
+    { id: 'gemini-1.5-pro', model: 'Gemini 1.5 Pro' },
+    { id: 'mistral-large-latest', model: 'Mistral Large' },
+    { id: 'codestral-latest', model: 'Codestral' },
+    { id: 'open-mistral-nemo', model: 'Mistral Nemo' }
+];
 
 async function getAvailableModels(apiKey, log) {
-    if (MODEL_CACHE && Date.now() < CACHE_EXPIRY) {
-        return MODEL_CACHE;
-    }
-
-    try {
-        const response = await fetch("https://g4f.space/v1/models", {
-            headers: {
-                "Authorization": `Bearer ${apiKey}`
-            }
-        });
-
-        if (!response.ok) {
-            throw new Error(`Failed to fetch models, status: ${response.status}`);
-        }
-
-        const data = await response.json();
-        MODEL_CACHE = data.data || [];
-        CACHE_EXPIRY = Date.now() + CACHE_TTL_MS;
-        return MODEL_CACHE;
-    } catch (err) {
-        log(`Error fetching models for cache: ${err.message}`);
-        // If cache fetch fails, return previous cache if exists, otherwise empty array
-        return MODEL_CACHE || [];
-    }
+    return AVAILABLE_MODELS;
 }
 
 export default async ({ req, res, log, error }) => {
@@ -217,44 +200,118 @@ export default async ({ req, res, log, error }) => {
 
                 messages = [systemMessage, ...messages];
 
-                const g4fPayload = {
-                    model: requestedModel,
-                    messages: messages
-                };
 
-                console.log("Payload:");
-                console.log(JSON.stringify(g4fPayload, null, 2));
+                let responseText = '';
+                let totalTokens = 0;
 
-                // Call Official G4F API directly using fetch and secret API Key
-                const g4fRes = await fetch("https://g4f.space/v1/chat/completions", {
-                    method: "POST",
-                    headers: {
-                        "Authorization": `Bearer ${process.env.G4F_API_KEY}`,
-                        "Content-Type": "application/json"
-                    },
-                    body: JSON.stringify(g4fPayload)
-                });
+                const isMistral = requestedModel.startsWith('mistral-') || requestedModel.startsWith('codestral-') || requestedModel.startsWith('open-mistral-');
 
-                if (!g4fRes.ok) {
-                    const errText = await g4fRes.text();
-                    log(`G4F API Error: Status ${g4fRes.status}`);
-                    log(`Response headers: ${JSON.stringify(Object.fromEntries(g4fRes.headers.entries()))}`);
-                    log(`Response body: ${errText}`);
-                    log(`Selected model: ${requestedModel}`);
-
-                    return returnJson({
-                        success: false,
+                if (isMistral) {
+                    const mistralPayload = {
                         model: requestedModel,
-                        status: g4fRes.status,
-                        g4fError: errText
-                    }, 500, corsHeaders);
+                        messages: messages
+                    };
+
+                    console.log("Mistral Payload:");
+                    console.log(JSON.stringify(mistralPayload, null, 2));
+
+                    const mistralRes = await fetch("https://api.mistral.ai/v1/chat/completions", {
+                        method: "POST",
+                        headers: {
+                            "Authorization": `Bearer ${MISTRAL_API_KEY}`,
+                            "Content-Type": "application/json"
+                        },
+                        body: JSON.stringify(mistralPayload)
+                    });
+
+                    if (!mistralRes.ok) {
+                        const errText = await mistralRes.text();
+                        log(`Mistral API Error: Status ${mistralRes.status}`);
+                        log(`Response body: ${errText}`);
+                        return returnJson({
+                            success: false,
+                            model: requestedModel,
+                            status: mistralRes.status,
+                            error: `Mistral API Error: ${errText}`
+                        }, 500, corsHeaders);
+                    }
+
+                    const mistralData = await mistralRes.json();
+                    responseText = mistralData.choices?.[0]?.message?.content || 'No response from model.';
+                    totalTokens = mistralData.usage?.total_tokens;
+                } else {
+                    // Map the system/user/assistant messages to Gemini format
+                    const systemMessages = messages.filter(m => m.role === 'system');
+                    const systemInstructionText = systemMessages.map(m => m.content).join('\n');
+
+                    const geminiContents = [];
+
+                    // Inject system instruction as user/model conversation prefix for compatibility
+                    if (systemInstructionText) {
+                        geminiContents.push({
+                            role: 'user',
+                            parts: [{ text: `Instructions for this conversation:\n${systemInstructionText}` }]
+                        });
+                        geminiContents.push({
+                            role: 'model',
+                            parts: [{ text: 'Understood. I will follow those instructions and respond according to the personality specified.' }]
+                        });
+                    }
+
+                    // Add the rest of the conversation
+                    const regularContents = messages
+                        .filter(m => m.role !== 'system')
+                        .map(m => {
+                            const role = m.role === 'assistant' ? 'model' : 'user';
+                            return {
+                                role: role,
+                                parts: [{ text: m.content }]
+                            };
+                        });
+
+                    geminiContents.push(...regularContents);
+
+                    // Gemini expects the conversation to start with user, and alternate user/model.
+                    if (geminiContents.length > 0 && geminiContents[0].role === 'model') {
+                        geminiContents.unshift({ role: 'user', parts: [{ text: 'Hello' }] });
+                    }
+
+                    const geminiPayload = {
+                        contents: geminiContents
+                    };
+
+                    console.log("Gemini Payload:");
+                    console.log(JSON.stringify(geminiPayload, null, 2));
+
+                    const geminiRes = await fetch(`https://generativelanguage.googleapis.com/v1/models/${requestedModel}:generateContent?key=${GEMINI_API_KEY}`, {
+                        method: "POST",
+                        headers: {
+                            "Content-Type": "application/json"
+                        },
+                        body: JSON.stringify(geminiPayload)
+                    });
+
+                    if (!geminiRes.ok) {
+                        const errText = await geminiRes.text();
+                        log(`Gemini API Error: Status ${geminiRes.status}`);
+                        log(`Response headers: ${JSON.stringify(Object.fromEntries(geminiRes.headers.entries()))}`);
+                        log(`Response body: ${errText}`);
+                        log(`Selected model: ${requestedModel}`);
+
+                        return returnJson({
+                            success: false,
+                            model: requestedModel,
+                            status: geminiRes.status,
+                            error: `Gemini API Error: ${errText}`
+                        }, 500, corsHeaders);
+                    }
+
+                    const geminiData = await geminiRes.json();
+                    responseText = geminiData.candidates?.[0]?.content?.parts?.[0]?.text || 'No response from model.';
+                    totalTokens = geminiData.usageMetadata?.totalTokenCount;
                 }
 
-                const g4fData = await g4fRes.json();
-                const responseText = g4fData.choices[0].message.content;
-
-                // Real Token Tracking via API response if available, fallback to length estimate
-                let totalTokens = g4fData.usage?.total_tokens;
+                // Token Tracking Fallback
                 if (!totalTokens) {
                    const inputLen = JSON.stringify(messages).length;
                    const outputLen = responseText.length;
@@ -275,7 +332,7 @@ export default async ({ req, res, log, error }) => {
                 }, 200, corsHeaders);
 
             } catch (chatError) {
-                error("G4F Request Exception:", chatError);
+                error("Request Exception:", chatError);
                 return returnJson({ error: 'Failed to communicate with AI provider.' }, 500, corsHeaders);
             }
         }
