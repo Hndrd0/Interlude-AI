@@ -355,16 +355,13 @@ function processArtifacts(content) {
         window.appArtifacts = window.appArtifacts || {};
         window.appArtifacts[id] = { lang, code };
 
-        // Remove inline onclick to comply with DOMPurify. Event delegation handles the click.
-        const artifactHtml = `
-            <div class="artifact-card artifact-trigger" data-id="${id}">
-                <div class="artifact-info">
-                    <span class="artifact-icon">✨</span>
-                    <span class="artifact-title">Artifact (${lang})</span>
-                </div>
-                <div>Click to view</div>
-            </div>
-        `;
+        const artifactHtml = `<div class="artifact-card artifact-trigger" data-id="${id}">
+<div class="artifact-info">
+<span class="artifact-icon">✨</span>
+<span class="artifact-title">Artifact (${lang})</span>
+</div>
+<div>Click to view</div>
+</div>`;
         return artifactHtml + '\n' + match;
     });
 
