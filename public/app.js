@@ -616,14 +616,26 @@ async function fetchUsage() {
         const result = JSON.parse(execution.responseBody);
 
         document.getElementById('tokens-used').textContent = result.tokenUsed;
-        document.getElementById('tokens-limit').textContent = result.limit;
-        document.getElementById('tokens-remaining').textContent = Math.max(0, result.limit - result.tokenUsed);
-
-        const pct = Math.min(100, (result.tokenUsed / result.limit) * 100);
-        document.getElementById('usage-progress-bar').style.width = `${pct}%`;
 
         if (result.isAdmin) {
             document.getElementById('admin-badge').classList.remove('hidden');
+            document.getElementById('tokens-limit').textContent = 'Unlimited';
+            document.getElementById('tokens-remaining').textContent = 'Unlimited';
+            document.getElementById('usage-progress-bar').style.width = '0%';
+            document.getElementById('time-to-reset').textContent = '--';
+        } else {
+            document.getElementById('tokens-limit').textContent = result.limit;
+            document.getElementById('tokens-remaining').textContent = Math.max(0, result.limit - result.tokenUsed);
+
+            const pct = Math.min(100, (result.tokenUsed / result.limit) * 100);
+            document.getElementById('usage-progress-bar').style.width = `${pct}%`;
+
+            // Calculate time to hourly reset
+            const windowStart = new Date(result.windowStart);
+            const resetTime = new Date(windowStart.getTime() + 60 * 60 * 1000);
+            const diffMs = resetTime - new Date();
+            const diffMins = Math.max(0, Math.ceil(diffMs / (1000 * 60)));
+            document.getElementById('time-to-reset').textContent = `${diffMins}m`;
         }
 
     } catch (e) {
