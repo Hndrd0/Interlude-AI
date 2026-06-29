@@ -82,12 +82,19 @@ let chats = JSON.parse(localStorage.getItem('interlude_chats')) || [];
 let activeChatId = null;
 let currentModelId = localStorage.getItem('interlude_model') || null;
 let availableModels = [];
+let webSearchActive = localStorage.getItem('interlude_websearch') === 'true';
 
 // --- Initialization Logic ---
 async function initUI() {
     renderChatList();
     applyTheme(localStorage.getItem('interlude_theme') || 'dark');
     setupEventListeners();
+
+    // Set web search button initial state
+    const searchToggle = document.getElementById('web-search-toggle');
+    if (searchToggle) {
+        searchToggle.classList.toggle('active', webSearchActive);
+    }
 
     // Fetch available models before rendering picker
     await fetchAvailableModels();
@@ -338,6 +345,16 @@ function setupEventListeners() {
     // Artifacts Panel
     openArtifactsBtn.addEventListener('click', () => artifactsPanel.classList.add('open'));
     closeArtifactsBtn.addEventListener('click', () => artifactsPanel.classList.remove('open'));
+
+    // Web Search Toggle
+    const searchToggle = document.getElementById('web-search-toggle');
+    if (searchToggle) {
+        searchToggle.addEventListener('click', () => {
+            webSearchActive = !webSearchActive;
+            localStorage.setItem('interlude_websearch', webSearchActive);
+            searchToggle.classList.toggle('active', webSearchActive);
+        });
+    }
 }
 
 // --- Message Rendering & Processing ---
@@ -494,6 +511,7 @@ async function sendMessage(text) {
             userId: currentUserId,
             model: currentModelId,
             displayModel: displayModel,
+            webSearch: webSearchActive,
             messages: chat.messages.map(m => ({ role: m.role, content: m.content }))
         };
 

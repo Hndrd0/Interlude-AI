@@ -18,6 +18,44 @@ async function getAvailableModels(apiKey, log) {
     return AVAILABLE_MODELS;
 }
 
+async function searchWeb(query, log) {
+    try {
+        log(`Performing web search for: ${query}`);
+        const url = `https://html.duckduckgo.com/html/?q=${encodeURIComponent(query)}`;
+        const res = await fetch(url, {
+            headers: {
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+            }
+        });
+        if (!res.ok) throw new Error(`Search failed: ${res.status}`);
+        const html = await res.text();
+
+        const results = [];
+        const snippetMatches = [...html.matchAll(/<a class="result__snippet"[^>]*>([\s\S]*?)<\/a>/g)];
+        const titleMatches = [...html.matchAll(/<a class="result__link"[^>]*>([\s\S]*?)<\/a>/g)];
+
+        for (let i = 0; i < Math.min(titleMatches.length, snippetMatches.length, 5); i++) {
+            const title = titleMatches[i][1].replace(/<[^>]*>/g, '').trim();
+            const snippet = snippetMatches[i][1].replace(/<[^>]*>/g, '').trim();
+            const hrefMatch = titleMatches[i][0].match(/href="([^"]*)"/);
+            let link = hrefMatch ? hrefMatch[1] : '';
+
+            if (link.includes('uddg=')) {
+                const parts = link.split('uddg=');
+                if (parts.length > 1) {
+                    link = decodeURIComponent(parts[1].split('&')[0]);
+                }
+            }
+            results.push({ title, snippet, link });
+        }
+        log(`Found ${results.length} search results`);
+        return results;
+    } catch (err) {
+        log(`Web search error: ${err.message}`);
+        return [];
+    }
+}
+
 export default async ({ req, res, log, error }) => {
     console.log("Incoming body:", req.body);
 
@@ -200,6 +238,24 @@ export default async ({ req, res, log, error }) => {
 
                 messages = [systemMessage, ...messages];
 
+                // Web Search context injection
+                if (body.webSearch && messages.length > 1) {
+                    const lastUserMessage = messages[messages.length - 1];
+                    if (lastUserMessage && lastUserMessage.role === 'user') {
+                        const searchResults = await searchWeb(lastUserMessage.content, log);
+                        if (searchResults.length > 0) {
+                            const contextString = searchResults
+                                .map((res, index) => `${index + 1}. [${res.title}](${res.link})\n   ${res.snippet}`)
+                                .join('\n\n');
+
+                            const searchContextMessage = {
+                                role: 'system',
+                                content: `Web Search Results for "${lastUserMessage.content}":\n\n${contextString}\n\nProvide an answer using the search results above where relevant. Cite sources using markdown links. If the information is not present in the search results, answer normally.`
+                            };
+                            messages.splice(messages.length - 1, 0, searchContextMessage);
+                        }
+                    }
+                }
 
                 let responseText = '';
                 let totalTokens = 0;

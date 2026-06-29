@@ -275,6 +275,16 @@ textarea:focus, input:focus {
     height: 28px;
 }
 
+.search-toggle-btn.active {
+    background-color: var(--accent-color);
+    color: #ffffff;
+}
+
+.search-toggle-btn.active:hover {
+    background-color: var(--accent-hover);
+    color: #ffffff;
+}
+
 .topbar-title {
     margin-left: 12px;
     font-weight: 500;
